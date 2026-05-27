@@ -25,3 +25,12 @@ targetSdk: 36
 minSdk: 24
 Java: 17
 
+# フォルダ構成
+core/database SQLiteなどアプリ全体で使うDB
+features/auth ログイン・認証
+features/tasks 課題管理
+features/grades 成績管理
+features/schedule 予定管理
+features/widgets ホーム画面やウィジェット関連
+shared 共通UIやテーマ
+
