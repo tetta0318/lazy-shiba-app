@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -13,7 +15,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
+    
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.lazy_shiba_app"
@@ -34,9 +36,9 @@ android {
     }
 }
 
-kotlin {
-    compilerOptions {
-        jvmTarget = "17"
+kotlin{
+    compilerOptions{
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
