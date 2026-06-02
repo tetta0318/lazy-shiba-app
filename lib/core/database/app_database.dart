@@ -59,6 +59,7 @@ STRING 文字列 -> String
         subject_name TEXT NOT NULL,
         deadline TEXT NOT NULL,
         url TEXT NOT NULL,
+        feeling INTEGER NOT NULL,
         STATUS INTEGER NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULl
