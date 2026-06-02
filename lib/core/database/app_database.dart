@@ -5,7 +5,7 @@ class AppTable {
   const AppTable._();
 
   static const tasks = 'tasks';
-  static const grades = 'grades';
+  static const subjects = 'subjects';
   static const schedules = 'schedules';
 }
 
@@ -18,7 +18,7 @@ class AppDatabase {
   static const _databaseVersion = 1;
   static const _supportedTables = {
     AppTable.tasks,
-    AppTable.grades,
+    AppTable.subjects,
     AppTable.schedules,
   };
 
@@ -44,28 +44,33 @@ class AppDatabase {
     return openedDatabase;
   }
 
+/* データベース 型
+INTEGER 符号付き整数 -> int
+STRING 文字列 -> String
+
+*/
+
   Future<void> _createDatabase(Database db, int version) async {
     await db.execute('''
       CREATE TABLE ${AppTable.tasks} (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        subject TEXT NOT NULL DEFAULT '',
-        due_date TEXT NOT NULL DEFAULT '',
-        status TEXT NOT NULL DEFAULT '未着手',
-        memo TEXT NOT NULL DEFAULT '',
+        task_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        subject_id INTEGER NOT NULL,
+        task_name TEXT NOT NULL,
+        subject_name TEXT NOT NULL,
+        deadline TEXT NOT NULL,
+        url TEXT NOT NULL,
+        STATUS INTEGER NOT NULL,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        updated_at TEXT NOT NULl
       )
     ''');
 
     await db.execute('''
-      CREATE TABLE ${AppTable.grades} (
+      CREATE TABLE ${AppTable.subjects} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        subject TEXT NOT NULL,
-        score REAL NOT NULL DEFAULT 0,
-        max_score REAL NOT NULL DEFAULT 100,
-        term TEXT NOT NULL DEFAULT '',
-        memo TEXT NOT NULL DEFAULT '',
+        subject_name TEXT NOT NULL,
+        is_online INTEGER NOT NULL,
+        attendance_count INTEGER NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -74,11 +79,9 @@ class AppDatabase {
     await db.execute('''
       CREATE TABLE ${AppTable.schedules} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
         title TEXT NOT NULL,
-        location TEXT NOT NULL DEFAULT '',
-        start_at TEXT NOT NULL DEFAULT '',
-        end_at TEXT NOT NULL DEFAULT '',
-        memo TEXT NOT NULL DEFAULT '',
+        genre TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -147,8 +150,8 @@ class AppDatabase {
       });
     }
 
-    if (await countRows(AppTable.grades) == 0) {
-      await insertRow(AppTable.grades, {
+    if (await countRows(AppTable.subjects) == 0) {
+      await insertRow(AppTable.subjects, {
         'subject': 'ソフトウェア開発演習',
         'score': 86,
         'max_score': 100,
