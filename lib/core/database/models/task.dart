@@ -1,5 +1,5 @@
 class Task {
-  final int? taskId;
+  final int? id;
   final int subjectId;
   final String taskName;
   final DateTime deadline;
@@ -10,7 +10,7 @@ class Task {
   final DateTime updatedAt;
 
   const Task({
-    this.taskId,
+    this.id,
     required this.subjectId,
     required this.taskName,
     required this.deadline,
@@ -23,7 +23,7 @@ class Task {
 
   factory Task.fromMap(Map<String, dynamic> map) {
     return Task(
-      taskId: map['task_id'],
+      id: map['id'],
       subjectId: map['subject_id'],
       taskName: map['task_name'],
       deadline: DateTime.parse(map['deadline']),
@@ -37,7 +37,7 @@ class Task {
 
   Map<String, dynamic> toMap() {
     return {
-      'task_id': taskId,
+      'id': id,
       'subject_id': subjectId,
       'task_name': taskName,
       'deadline': deadline.toIso8601String(),
@@ -50,7 +50,7 @@ class Task {
   }
 
   Task copyWith({
-    int? taskId,
+    int? id,
     int? subjectId,
     String? taskName,
     DateTime? deadline,
@@ -61,7 +61,7 @@ class Task {
     DateTime? updatedAt,
   }) {
     return Task(
-      taskId: taskId ?? this.taskId,
+      id: id ?? this.id,
       subjectId: subjectId ?? this.subjectId,
       taskName: taskName ?? this.taskName,
       deadline: deadline ?? this.deadline,
