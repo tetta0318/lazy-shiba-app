@@ -56,13 +56,14 @@ STRING 文字列 -> String
         task_id INTEGER PRIMARY KEY AUTOINCREMENT,
         subject_id INTEGER NOT NULL,
         task_name TEXT NOT NULL,
-        subject_name TEXT NOT NULL,
         deadline TEXT NOT NULL,
         url TEXT NOT NULL,
         feeling INTEGER NOT NULL,
         STATUS INTEGER NOT NULL,
         created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULl
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(subject_id)
+          REFARENCES subjects(id)
       )
     ''');
 
@@ -72,6 +73,7 @@ STRING 文字列 -> String
         subject_name TEXT NOT NULL,
         is_online INTEGER NOT NULL,
         attendance_count INTEGER NOT NULL,
+        total_class_count INTEGER NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
