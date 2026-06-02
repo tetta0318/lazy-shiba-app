@@ -47,7 +47,6 @@ class AppDatabase {
 /* データベース 型
 INTEGER 符号付き整数 -> int
 STRING 文字列 -> String
-
 */
 
   Future<void> _createDatabase(Database db, int version) async {
