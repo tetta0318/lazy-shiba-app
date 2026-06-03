@@ -69,6 +69,7 @@
 
 //         assignmentList.add(assignment);
 //         }
+// これ以降の処理はインタフェースが出来上がったらデータベース値を渡すだけに変更
 //         print('\n=========================================');
 //         print('【解析完了】取得件数: \${assignmentList.length} 件');
 //         print('=========================================');
@@ -90,10 +91,11 @@
 //   }
 // }
 
+
+// テスト用の擬似HTMLを用いて、スクレイピングのロジックを完璧に動かすコードです。
 import 'package:html/parser.dart' as html_parser;
 import 'package:dio/dio.dart' as dio;
 import 'package:html/dom.dart' as html_dom;
-
 class Assignment {
   final int taskId;
   final int subjectId;
