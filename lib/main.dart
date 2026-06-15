@@ -122,35 +122,58 @@
 // }
 
 import 'package:flutter/material.dart';
-// ↓あなたが作ったスクレイピングのファイルをインポートします（フォルダ構造に合わせてパスを調整してください）
-import 'package:lazy_shiba_app/features/tasks/tasks_scraping.dart'; 
+// 課題のスクレイピングファイルをインポート
+import 'package:lazy_shiba_app/features/tasks/TasksScraping.dart'; 
+// スケジュール（科目名）のスクレイピングファイルをインポート（パスは環境に合わせてください）
+import 'package:lazy_shiba_app/features/schedule/SubjectsScraping.dart'; 
 
 void main() async {
-  // Flutterの初期化処理（非同期処理をmainで行う場合の決まり文句）
+  // Flutterの初期化処理
   WidgetsFlutterBinding.ensureInitialized();
 
-  print('=== スクレイピングテスト開始 ===');
+  print('=== スクレイピングテスト開始 ===\n');
 
-  // 1. あなたの作ったクラスをインスタンス化
-  final scraper = tasks_scraping();
+  // ==========================================
+  // 1. 課題（Tasks）のスクレイピング処理
+  // ==========================================
+  print('[1/2] 課題一覧を取得中...');
+  final tasksScraper = TasksScraping();
+  await tasksScraper.getTasks();
 
-  // 2. getTasksメソッドを実行（通信が終わるまで await で待つ）
-  await scraper.getTasks();
-
-  // 3. クラスのメンバ変数に保存されたリストを拡張for文で回してコンソールに出力
-  if (scraper.assignmentList.isEmpty) {
-    print('課題は見つかりませんでした、または取得に失敗しました。');
+  if (tasksScraper.assignmentList.isEmpty) {
+    print('   -> 課題は見つかりませんでした。\n');
   } else {
-    print('取得成功！件数: ${scraper.assignmentList.length}件\n');
+    print('   -> 取得成功！件数: ${tasksScraper.assignmentList.length}件');
     
-    for (final assignment in scraper.assignmentList) {
+    for (final assignment in tasksScraper.assignmentList) {
       print('-----------------------------------------');
       print('【科目名】 ${assignment.subjectName}');
       print('【課題名】 ${assignment.taskName}');
       print('【締切日】 ${assignment.deadline}');
       print('【URL】    ${assignment.submissionURL}');
     }
-    print('-----------------------------------------');
+    print('-----------------------------------------\n');
+  }
+
+  // ==========================================
+  // 2. スケジュール（科目名）のスクレイピング処理
+  // ==========================================
+  print('[2/2] 時間割から科目名を取得中...');
+  final scheduleScraper = SubjectsScraping(); // あなたが作った時間割用のクラス
+  
+  // もしメソッド名を「getSubjectNames」にしている場合はそちらを呼び出してください
+  scheduleScraper.getSubjectNames(); 
+
+  if (scheduleScraper.subjectNames.isEmpty) {
+    print('   -> 科目名は見つかりませんでした。\n');
+  } else {
+    print('   -> 取得成功！件数: ${scheduleScraper.subjectNames.length}件');
+    
+    print('------------- 取得した科目名 -------------');
+    for (final subjectName in scheduleScraper.subjectNames) {
+      print('・ $subjectName');
+    }
+    print('-----------------------------------------\n');
   }
 
   print('=== スクレイピングテスト終了 ===');
