@@ -4,14 +4,6 @@ import 'gpa_goal_page.dart';
 import 'subject_detail_page.dart';
 import 'model/gpa_data.dart';
 
-void main() {
-  runApp(
-    const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: GradesPage(),
-    ),
-  );
-}
 
 class GradesPage extends StatefulWidget {
   const GradesPage({super.key});
