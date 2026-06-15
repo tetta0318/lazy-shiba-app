@@ -121,60 +121,101 @@
 //   }
 // }
 
+// import 'package:flutter/material.dart';
+// // 課題のスクレイピングファイルをインポート
+// import 'package:lazy_shiba_app/features/tasks/TasksScraping.dart'; 
+// // スケジュール（科目名）のスクレイピングファイルをインポート（パスは環境に合わせてください）
+// import 'package:lazy_shiba_app/features/schedule/SubjectsScraping.dart'; 
+
+// void main() async {
+//   // Flutterの初期化処理
+//   WidgetsFlutterBinding.ensureInitialized();
+
+//   print('=== スクレイピングテスト開始 ===\n');
+
+//   // ==========================================
+//   // 1. 課題（Tasks）のスクレイピング処理
+//   // ==========================================
+//   print('[1/2] 課題一覧を取得中...');
+//   final tasksScraper = TasksScraping();
+//   await tasksScraper.getTasks();
+
+//   if (tasksScraper.assignmentList.isEmpty) {
+//     print('   -> 課題は見つかりませんでした。\n');
+//   } else {
+//     print('   -> 取得成功！件数: ${tasksScraper.assignmentList.length}件');
+    
+//     for (final assignment in tasksScraper.assignmentList) {
+//       print('-----------------------------------------');
+//       print('【科目名】 ${assignment.subjectName}');
+//       print('【課題名】 ${assignment.taskName}');
+//       print('【締切日】 ${assignment.deadline}');
+//       print('【URL】    ${assignment.submissionURL}');
+//     }
+//     print('-----------------------------------------\n');
+//   }
+
+//   // ==========================================
+//   // 2. スケジュール（科目名）のスクレイピング処理
+//   // ==========================================
+//   print('[2/2] 時間割から科目名を取得中...');
+//   final scheduleScraper = SubjectsScraping(); // あなたが作った時間割用のクラス
+  
+//   // もしメソッド名を「getSubjectNames」にしている場合はそちらを呼び出してください
+//   scheduleScraper.getSubjectNames(); 
+
+//   if (scheduleScraper.subjectNames.isEmpty) {
+//     print('   -> 科目名は見つかりませんでした。\n');
+//   } else {
+//     print('   -> 取得成功！件数: ${scheduleScraper.subjectNames.length}件');
+    
+//     print('------------- 取得した科目名 -------------');
+//     for (final subjectName in scheduleScraper.subjectNames) {
+//       print('・ $subjectName');
+//     }
+//     print('-----------------------------------------\n');
+//   }
+
+//   print('=== スクレイピングテスト終了 ===');
+// }import 'package:flutter/material.dart';
+// 認証リポジトリだけをインポート
 import 'package:flutter/material.dart';
-// 課題のスクレイピングファイルをインポート
-import 'package:lazy_shiba_app/features/tasks/TasksScraping.dart'; 
-// スケジュール（科目名）のスクレイピングファイルをインポート（パスは環境に合わせてください）
-import 'package:lazy_shiba_app/features/schedule/SubjectsScraping.dart'; 
+import 'package:lazy_shiba_app/features/auth/authRepository.dart'; 
 
 void main() async {
   // Flutterの初期化処理
   WidgetsFlutterBinding.ensureInitialized();
 
-  print('=== スクレイピングテスト開始 ===\n');
+  print('=========================================');
+  print('===      【単体テスト】認証処理      ===');
+  print('=========================================\n');
 
-  // ==========================================
-  // 1. 課題（Tasks）のスクレイピング処理
-  // ==========================================
-  print('[1/2] 課題一覧を取得中...');
-  final tasksScraper = TasksScraping();
-  await tasksScraper.getTasks();
+  final authRepo = AuthRepository();
 
-  if (tasksScraper.assignmentList.isEmpty) {
-    print('   -> 課題は見つかりませんでした。\n');
-  } else {
-    print('   -> 取得成功！件数: ${tasksScraper.assignmentList.length}件');
-    
-    for (final assignment in tasksScraper.assignmentList) {
-      print('-----------------------------------------');
-      print('【科目名】 ${assignment.subjectName}');
-      print('【課題名】 ${assignment.taskName}');
-      print('【締切日】 ${assignment.deadline}');
-      print('【URL】    ${assignment.submissionURL}');
-    }
-    print('-----------------------------------------\n');
-  }
+  // ⚠️ テストしたい実際の学籍番号（またはID）とパスワードに書き換えてください
+  const String testUsername = 'al24010@sic.shibaura-it.ac.jp'; 
+  const String testPassword = '12172826iI%'; 
 
-  // ==========================================
-  // 2. スケジュール（科目名）のスクレイピング処理
-  // ==========================================
-  print('[2/2] 時間割から科目名を取得中...');
-  final scheduleScraper = SubjectsScraping(); // あなたが作った時間割用のクラス
+  print('[$testUsername] でログインを試行します...');
   
-  // もしメソッド名を「getSubjectNames」にしている場合はそちらを呼び出してください
-  scheduleScraper.getSubjectNames(); 
+  // 認証処理を実行
+  bool isSuccess = await authRepo.login(
+    username: testUsername,
+    password: testPassword,
+  );
 
-  if (scheduleScraper.subjectNames.isEmpty) {
-    print('   -> 科目名は見つかりませんでした。\n');
+  print('\n-----------------------------------------');
+  if (isSuccess) {
+    print('  🎉 ログイン成功！！ 🎉');
+    print('  サーバーから正常なレスポンス（200 OK）が返ってきました。');
+    print('  セッション（Cookie）が保持されています。');
   } else {
-    print('   -> 取得成功！件数: ${scheduleScraper.subjectNames.length}件');
-    
-    print('------------- 取得した科目名 -------------');
-    for (final subjectName in scheduleScraper.subjectNames) {
-      print('・ $subjectName');
-    }
-    print('-----------------------------------------\n');
+    print('  ❌ ログイン失敗 ❌');
+    print('  ID/パスワードが違うか、URL・通信設定の調整が必要です。');
   }
+  print('-----------------------------------------\n');
 
-  print('=== スクレイピングテスト終了 ===');
+  print('=== 認証テスト終了 ===');
 }
+
+
