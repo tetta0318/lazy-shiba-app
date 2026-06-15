@@ -8,6 +8,7 @@ class TaskRepository {
 
   final AppDatabase _database;
 
+  //taskオブジェクトをdatabaseに追加
   Future<int> createTask(Task task) async {
     return _database.insertRow(
       AppTable.tasks,
@@ -15,6 +16,7 @@ class TaskRepository {
     );
   }
 
+  //taskオブジェクトのリストとしてすべてのタスクを返す
   Future<List<Task>> getTasks() async {
     final maps = await _database.getRows(
       AppTable.tasks,
@@ -24,6 +26,7 @@ class TaskRepository {
     return maps.map(Task.fromMap).toList();
   }
 
+  //idからタスクオブジェクトとしてタスクを返す
   Future<Task?> getTaskById(int id) async {
     final map = await _database.getRowById(
       AppTable.tasks,
@@ -37,6 +40,7 @@ class TaskRepository {
     return Task.fromMap(map);
   }
 
+  //科目idからtaskオブジェクトのリストとしてタスクを返す
   Future<List<Task>> getTasksBySubjectId(int subjectId) async {
     final db = await _database.database;
 
@@ -50,6 +54,7 @@ class TaskRepository {
     return maps.map(Task.fromMap).toList();
   }
 
+  //idをもとにタスクを更新
   Future<int> updateTask(Task task) async {
     if (task.id == null) {
       throw ArgumentError('更新するTaskにはidが必要です');
@@ -62,6 +67,7 @@ class TaskRepository {
     );
   }
 
+  //idからtaskのstatusを更新する
   Future<int> updateTaskStatus({
     required int id,
     required int status,
@@ -75,6 +81,7 @@ class TaskRepository {
     );
   }
 
+  //idからtaskの手ごたえを更新
   Future<int> updateTaskFeeling({
     required int id,
     required int feeling,
@@ -88,6 +95,7 @@ class TaskRepository {
     );
   }
 
+  //idからタスクを削除
   Future<int> deleteTask(int id) async {
     return _database.deleteRow(
       AppTable.tasks,
