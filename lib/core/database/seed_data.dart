@@ -49,7 +49,7 @@ class SeedData {
       'updated_at': now,
     });
 
-    await db.insert('subject', {
+    await db.insert('subjects', {
       'subject_name': 'ソフトウェア工学',
       'is_online': 0,
       'attendance_count': 8,
@@ -58,7 +58,7 @@ class SeedData {
       'updated_at': now,
     });
     
-    await db.insert('subject', {
+    await db.insert('subjects', {
       'subject_name': 'ソフトウェア開発演習',
       'is_online': 0,
       'attendance_count': 8,
@@ -67,7 +67,7 @@ class SeedData {
       'updated_at': now,
     });
 
-    await db.insert('subject', {
+    await db.insert('subjects', {
       'subject_name': '人工知能',
       'is_online': 0,
       'attendance_count': 8,
@@ -76,7 +76,7 @@ class SeedData {
       'updated_at': now,
     });
 
-    await db.insert('subject', {
+    await db.insert('subjects', {
       'subject_name': 'データ解析法',
       'is_online': 0,
       'attendance_count': 8,
@@ -85,7 +85,7 @@ class SeedData {
       'updated_at': now,
     });
 
-    await db.insert('subject', {
+    await db.insert('subjects', {
       'subject_name': '組込みシステム',
       'is_online': 0,
       'attendance_count': 8,
@@ -94,7 +94,7 @@ class SeedData {
       'updated_at': now,
     });
 
-    await db.insert('subject', {
+    await db.insert('subjects', {
       'subject_name': 'ソフトウェア工学',
       'is_online': 0,
       'attendance_count': 8,
