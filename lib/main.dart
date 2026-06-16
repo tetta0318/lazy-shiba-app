@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'features/tasks/tasks_screen.dart';
+import 'features/auth/login.dart';
 
 void main() {
   runApp(
@@ -26,7 +26,7 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const TasksScreen(),
+      home: const LoginScreen(),
     );
   }
 }
