@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../grades/grades_page.dart';
+import '../schedule/schedule_screen.dart';
+import '../sync/portal_sync_screen.dart';
+import '../tasks/tasks_screen.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -9,6 +14,34 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0; // 現在選択されているナビゲーションバーのインデックス
+
+  Future<void> _openSection(int index) async {
+    setState(() {
+      _selectedIndex = index;
+    });
+
+    final Widget? destination = switch (index) {
+      1 => const TasksScreen(),
+      2 => const GradesPage(),
+      3 => const ScheduleScreen(),
+      _ => null,
+    };
+
+    if (destination == null) {
+      return;
+    }
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => destination),
+    );
+
+    if (mounted) {
+      setState(() {
+        _selectedIndex = 0;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +118,23 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.sync),
+                  label: const Text('学校ポータルと同期'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PortalSyncScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ],
           ),
         ),
@@ -93,12 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         type: BottomNavigationBarType.fixed,
-        onTap: (int index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-          // TODO: タブをタップした際の各画面（課題・成績・予定）へのルーティング処理
-        },
+        onTap: _openSection,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'ホーム'),
           BottomNavigationBarItem(icon: Icon(Icons.assignment), label: '課題'),
