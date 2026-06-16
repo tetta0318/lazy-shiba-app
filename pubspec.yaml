@@ -40,7 +40,7 @@ dependencies:
   dio: ^5.9.2
   html: ^0.15.6
   shared_preferences: ^2.5.5
-  home_widget: ^0.6.0
+  home_widget: ^0.9.3
   webview_flutter: ^4.10.0
   webview_flutter_android: ^4.0.0
 
