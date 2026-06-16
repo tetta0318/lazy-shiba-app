@@ -28,12 +28,11 @@ class _TasksScreenState extends State<TasksScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        // 1. タイトルを画面の真ん中に寄せる設定
         centerTitle: true, 
         
         title: const Text('課題一覧', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         
-        // 2. 更新ボタンを右端(actions)から左端(leading)に移動
+
         leading: IconButton(
           icon: const Icon(Icons.refresh),
           onPressed: () {
