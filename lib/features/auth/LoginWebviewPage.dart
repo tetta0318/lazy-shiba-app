@@ -2,7 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 class LoginWebviewPage extends StatefulWidget {
-  const LoginWebviewPage({super.key});
+  final String id;
+  final String password;
+
+  const LoginWebviewPage({
+    super.key,
+    required this.id,
+    required this.password,
+  });
 
   @override
   State<LoginWebviewPage> createState() => _LoginWebviewPageState();
@@ -18,7 +25,6 @@ class _LoginWebviewPageState extends State<LoginWebviewPage> {
       appBar: AppBar(
         title: const Text('学校ポータルにログイン'),
         actions: [
-          // 動きがおかしくなった時用のリロードボタン
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () => _controller.reload(),
@@ -29,7 +35,7 @@ class _LoginWebviewPageState extends State<LoginWebviewPage> {
         children: [
           WebViewWidget(controller: _controller),
           if (_isLoading)
-            const Center(child: CircularProgressIndicator()), // 読込中のぐるぐる
+            const Center(child: CircularProgressIndicator()),
         ],
       ),
     );
@@ -39,9 +45,8 @@ class _LoginWebviewPageState extends State<LoginWebviewPage> {
   void initState() {
     super.initState();
 
-    // WebViewの初期設定
     _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted) // JavaScriptを有効化
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
@@ -49,23 +54,69 @@ class _LoginWebviewPageState extends State<LoginWebviewPage> {
           },
           onPageFinished: (String url) async {
             setState(() => _isLoading = false);
+
+            print('【ページ読込完了】: $url');
+
+            // ─── ステップ1: 最初のログイン選択ページ ───
+            if (url.endsWith('/login')) {
+              print('➔ 「学内ユーザログイン」ボタンを自動クリックします。');
+              await _controller.runJavaScript('''
+                (function() {
+                  var loginBtn = document.querySelector('a.login-btn') || 
+                                 document.querySelector('a[href*="saml/login"]');
+                  if (loginBtn) {
+                    loginBtn.click();
+                  }
+                })();
+              ''');
+            }
+            
+            // ─── ステップ2: ADFS認証画面（ID・PW入力ページ） ───
+            else if (url.contains('adfs') || url.contains('sic.shibaura-it.ac.jp')) {
+              print('➔ ADFSログイン画面を検知。IDにドメインを付与して自動入力します。');
+              
+              // 🌟【ここを修正】
+              // 入力された学籍番号（widget.id）に、すでに「@」が含まれているかチェックし、
+              // なければ自動で「@sic.shibaura-it.ac.jp」をくっつけます。
+              // ※ もし「@sic」だけでよければ、下の文字列を '@sic' に書き換えてください。
+              final String rawId = widget.id.trim();
+              final String formattedId = rawId.contains('@') 
+                  ? rawId 
+                  : '$rawId@sic.shibaura-it.ac.jp';
+
+              await _controller.runJavaScript('''
+                (function() {
+                  var idField = document.getElementById('userNameInput');
+                  var pwField = document.getElementById('passwordInput');
+                  var submitButton = document.getElementById('submitButton');
+
+                  if (idField && pwField) {
+                    // 🌟整形したID（メールアドレス形式）を入力欄にセット
+                    idField.value = '$formattedId';
+                    pwField.value = '${widget.password}';
+                    
+                    if (submitButton) {
+                      if (typeof Login !== 'undefined' && Login.submitLoginRequest) {
+                        Login.submitLoginRequest();
+                      } else {
+                        submitButton.click();
+                      }
+                    }
+                  }
+                })();
+              ''');
+            }
           },
-          // ✨【確実なURL検知】画面移動や非同期リダイレクトの瞬間をすべてキャッチする
           onUrlChange: (UrlChange change) async {
             final String? currentUrl = change.url;
             if (currentUrl == null) return;
 
-            // 遷移したURLをコンソールに漏らさず出力
             print('【URL変化を検知】: $currentUrl');
 
-            // ログイン完了後のURL（ScombZのトップページなど）に到達したかを検知
             if (currentUrl.contains('scombz.shibaura-it.ac.jp/portal/home')) {
               print('🎉 ログイン完了をURL変化から検知しました！Cookieを回収します。');
 
-              // ブラウザからクッキーマネージャーを呼び出す
               final cookieManager = WebViewCookieManager();
-
-              // ScombZのドメインに紐づくクッキーをすべて取得
               final cookies = await cookieManager.getCookies(
                 domain: Uri.parse('https://scombz.shibaura-it.ac.jp'),
               );
@@ -78,18 +129,15 @@ class _LoginWebviewPageState extends State<LoginWebviewPage> {
               }
 
               if (mounted) {
-                // 画面下部にポップアップを表示
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('ログインに成功しました！データの同期を開始します。')),
                 );
-                // 前の画面（mainなど）にCookieの文字列を渡して画面を閉じる
                 Navigator.pop(context, cookieString);
               }
             }
           },
         ),
       )
-      // 学校のログイン開始画面を開く
       ..loadRequest(Uri.parse('https://scombz.shibaura-it.ac.jp/login'));
   }
 }

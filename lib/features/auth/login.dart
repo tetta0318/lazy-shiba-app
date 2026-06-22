@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../home/home_screen.dart'; 
+import 'LoginWebviewPage.dart';
+import '../schedule/SubjectsScraping.dart';
+import '../tasks/TasksScraping.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,23 +17,80 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   
   bool _isLoading = false;
-  
-  // 【追加】パスワードを隠すかどうかを管理する変数（初期値はtrue＝隠す）
   bool _isObscure = true; 
+  String _errorMessage = ''; // 🌟【追加】エラーメッセージを保持する変数
 
-  void _handleLogin() async {
+  // 各種取得データを保持する変数（元コードの_startSyncで使われていたもの）
+  List<dynamic> _fetchedTasks = [];
+  List<dynamic> _fetchedSubjects = [];
+
+  // 🌟【変更】ダミーの _handleLogin を、Cookie回収＆スクレイピングの _startSync に統合・変更
+  Future<void> _handleLogin() async {
+    // 1. WebView画面を開き、入力されたIDとパスワードを渡す
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('scombz_id', _idController.text);
+    await prefs.setString('scombz_password', _passwordController.text);
+    final grabbedCookies = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LoginWebviewPage(
+          id: _idController.text,         // コントローラーから直で渡す
+          password: _passwordController.text,
+        ),
+      ),
+    );
+
+    // Cookieが取れなかった（キャンセルされた）場合
+    if (grabbedCookies == null || grabbedCookies.isEmpty) {
+      setState(() {
+        _errorMessage = '連携がキャンセルされました。';
+      });
+      return;
+    }
+
+    // 同期処理開始（インジケータを回す）
     setState(() {
       _isLoading = true;
+      _errorMessage = '';
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // 2. 既存のスクレイピングロジックを実行
+      // ※クラス名やメソッド名は元のコードのままにしています
+      final tasksScraper = TasksScraping();
+      tasksScraper.taskDio.options.headers['Cookie'] = grabbedCookies;
+      await tasksScraper.getTasks();
 
-    if (!mounted) return;
+      final subjectsScraper = SubjectsScraping();
+      subjectsScraper.timetableDio.options.headers['Cookie'] = grabbedCookies;
+      await subjectsScraper.getSubjectNames();
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
-    );
+      if (!mounted) return;
+
+      // 取得データをセット
+      setState(() {
+        _fetchedTasks = tasksScraper.assignmentList;
+        _fetchedSubjects = subjectsScraper.subjectNames;
+      });
+
+      // 3. すべて成功したら、ホーム画面へ移動（戻れないようにReplacement）
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = '同期中にエラーが発生しました: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -73,37 +134,45 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 16),
 
-              // 【変更】パスワード入力欄
+              // パスワード入力欄
               TextField(
                 controller: _passwordController,
-                // 変数を使うため、InputDecorationの前の const を外しています
                 decoration: InputDecoration(
                   labelText: 'パスワード',
                   prefixIcon: const Icon(Icons.lock),
                   border: const OutlineInputBorder(),
-                  // 【追加】入力欄の右端に配置するアイコンボタン
                   suffixIcon: IconButton(
-                    // _isObscure の状態（true/false）に合わせてアイコンを切り替える
                     icon: Icon(
                       _isObscure ? Icons.visibility_off : Icons.visibility,
                     ),
                     onPressed: () {
-                      // ボタンが押されたら、_isObscure の true/false を反転させて画面を更新する
                       setState(() {
                         _isObscure = !_isObscure;
                       });
                     },
                   ),
                 ),
-                // 【変更】固定の true ではなく、変数と連動させる
                 obscureText: _isObscure, 
               ),
+              
+              // 🌟【追加】エラーメッセージがある場合のみ表示するエリア
+              if (_errorMessage.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage,
+                  style: const TextStyle(color: Colors.red, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              
               const SizedBox(height: 32),
 
+              // ログイン・同期ボタン
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
+                  // 読み込み中はボタンを押せないようにする
                   onPressed: _isLoading ? null : _handleLogin,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
