@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lazy_shiba_app/shared/main_layout_screen.dart';
 import '../home/home_screen.dart'; 
 
 class LoginScreen extends StatefulWidget {
@@ -14,7 +15,7 @@ class _LoginScreenState extends State<LoginScreen> {
   
   bool _isLoading = false;
   
-  // 【追加】パスワードを隠すかどうかを管理する変数（初期値はtrue＝隠す）
+  //パスワードを隠すかどうかを管理する変数（初期値はtrue＝隠す）
   bool _isObscure = true; 
 
   void _handleLogin() async {
@@ -28,7 +29,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const HomeScreen()),
+      MaterialPageRoute(builder: (context) => const MainLayoutScreen()),
     );
   }
 

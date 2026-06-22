@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../grades/grades_page.dart';
-import '../schedule/schedule_screen.dart';
 import '../sync/portal_sync_screen.dart';
-import '../tasks/tasks_screen.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,35 +11,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  int _selectedIndex = 0; // 現在選択されているナビゲーションバーのインデックス
-
-  Future<void> _openSection(int index) async {
-    setState(() {
-      _selectedIndex = index;
-    });
-
-    final Widget? destination = switch (index) {
-      1 => const TasksScreen(),
-      2 => const GradesPage(),
-      3 => const ScheduleScreen(),
-      _ => null,
-    };
-
-    if (destination == null) {
-      return;
-    }
-
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => destination),
-    );
-
-    if (mounted) {
-      setState(() {
-        _selectedIndex = 0;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -138,18 +107,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-      ),
-      // 4. 下部ナビゲーションバー（C1 UI処理部：画面切り替え用の土台）
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        type: BottomNavigationBarType.fixed,
-        onTap: _openSection,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'ホーム'),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: '課題'),
-          BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: '成績'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: '予定'),
-        ],
       ),
     );
   }

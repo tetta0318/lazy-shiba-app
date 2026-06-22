@@ -33,14 +33,14 @@ class _TasksScreenState extends State<TasksScreen> {
         title: const Text('課題一覧', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
         
 
-        leading: IconButton(
-          icon: const Icon(Icons.refresh),
-          onPressed: () {
-            // TODO: 同期処理 (M3-2)
-          },
-        ),
-        
-    
+        actions:[
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () {
+              // TODO: 同期処理 (M3-2)
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
