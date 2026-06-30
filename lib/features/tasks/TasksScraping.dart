@@ -1,8 +1,13 @@
 import 'package:html/parser.dart' as html_parser;
 import 'package:dio/dio.dart' as dio;
 import 'package:html/dom.dart' as html_dom;
-// 💡 前回のAppDatabaseが定義されているファイルをインポートしてください
-import '../../core/database/app_database.dart';
+
+import '../../core/database/models/subject.dart';
+import '../../core/database/providers/subject_providers.dart';
+import '../../core/database/models/task.dart';
+import '../../core/database/providers/task_providers.dart';
+import '../../core/database/repositories/task_repository.dart';
+import '../../core/database/repositories/subject_repository.dart';
 
 class Assignment {
   final int taskId;
@@ -29,6 +34,10 @@ class Assignment {
 class TasksScraping {
   final dio.Dio taskDio = dio.Dio();
   List<Assignment> assignmentList = [];
+
+  // リポジトリを外部から注入、または初期化
+  final TaskRepository _taskRepository = TaskRepository();
+  final SubjectRepository _subjectRepository = SubjectRepository(); // 🏫 科目操作用
 
   Future<void> getTasks() async {
     assignmentList.clear();
@@ -92,7 +101,7 @@ class TasksScraping {
 
       print('🎉 【解析成功】課題数: ${assignmentList.length} 件');
 
-      // 🚀 【新規追加】解析したデータをSQLiteデータベースに登録/同期する
+      // 🚀 【リポジトリ対応】解析したデータをリポジトリ経由で保存/同期する
       await _saveTasksToDatabase();
 
     } on dio.DioException catch (e) {
@@ -104,40 +113,38 @@ class TasksScraping {
     }
   }
 
-  /// 🚀 課題リストをSQLiteデータベースに保存・同期する内部メソッド
+  /// 🚀 課題リストをリポジトリを介して保存・同期する内部メソッド
   Future<void> _saveTasksToDatabase() async {
     print('💾 データベースへの同期を開始します...');
-    final dbHelper = AppDatabase.instance;
+
+    // 既存のタスク一覧を一括取得して、存在チェックを効率化する（リポジトリに getTasks があるため可能）
+    final List<Task> existingTasks = await _taskRepository.getTasks();
 
     for (final assignment in assignmentList) {
       // 1. 科目（subjects）のIDを特定、または新規登録
       int finalSubjectTableId = await _findOrCreateSubject(assignment.subjectName);
 
       // 2. すでに同じtaskIdの課題が登録されているか確認
-      final existingTask = await dbHelper.getRowById(AppTable.tasks, assignment.taskId);
+      final bool isExisting = existingTasks.any((t) => t.id == assignment.taskId);
 
-      // データベースに渡すMapデータの作成
-      final taskValues = {
-        'subject_id': finalSubjectTableId,
-        'task_name': assignment.taskName,
-        'deadline': assignment.deadline,
-        'url': assignment.submissionURL,
-        'feeling': assignment.taskresponse, // 元コードの初期値0
-        'status': assignment.taskstatus,     // 元コードの初期値0
-      };
+      // Taskオブジェクトの作成（プロパティ名は定義されているTaskモデルに合わせて調整してください）
+      final taskData = Task(
+        id: assignment.taskId,
+        subjectId: finalSubjectTableId,
+        taskName: assignment.taskName,
+        deadline: assignment.deadline,
+        url: assignment.submissionURL,
+        feeling: assignment.taskresponse,
+        status: assignment.taskstatus,
+      );
 
-      if (existingTask == null) {
-        // 未登録の場合は、IDを指定して新規挿入 (ID自動生成ではなく、ScombZのtaskIdをそのままidにする)
-        final finalValuesWithId = {
-          'id': assignment.taskId,
-          ...taskValues,
-        };
-        // 既存のinsertRowは内部でcreated_atなどを自動付与するので、そのまま使えます
-        await dbHelper.insertRow(AppTable.tasks, finalValuesWithId);
+      if (!isExisting) {
+        // 未登録の場合は新規作成
+        await _taskRepository.createTask(taskData);
         print(' ➕ 新規課題を登録しました: ${assignment.taskName}');
       } else {
-        // 既に登録済みの場合は、内容を更新
-        await dbHelper.updateRow(AppTable.tasks, assignment.taskId, taskValues);
+        // 既に登録済みの場合は更新
+        await _taskRepository.updateTask(taskData);
         print(' 🔄 既存の課題を更新しました: ${assignment.taskName}');
       }
     }
@@ -146,25 +153,29 @@ class TasksScraping {
 
   /// 科目名から既存の科目IDを探し、なければ新規作成してそのIDを返すヘルパーメソッド
   Future<int> _findOrCreateSubject(String subjectName) async {
-    final dbHelper = AppDatabase.instance;
-    
     // 全科目を取得して、名前が一致するものを探す
-    final allSubjects = await dbHelper.getRows(AppTable.subjects);
-    for (final row in allSubjects) {
-      if (row['subject_name'] == subjectName) {
-        return row['id'] as int;
+    // ※ 💡 SubjectRepository に getSubjects() や createSubject() がある前提の疑似コードです。
+    // ※ 💡 もし未実装なら、必要に応じてリポジトリ側にメソッドを追加してください。
+    final List<Subject> allSubjects = await _subjectRepository.getSubjects();
+    
+    for (final subject in allSubjects) {
+      if (subject.subjectName == subjectName) {
+        return subject.id; // 既存の科目IDを返す
       }
     }
 
-    // 見つからなかった場合は新規登録
     print(' 🏫 新しい科目を検出したため登録します: $subjectName');
-    final newSubjectId = await dbHelper.insertRow(AppTable.subjects, {
-      'subject_name': subjectName,
-      'is_online': 0,         // 初期値（スクレイピングだけでは不明なため）
-      'attendance_count': 0,  // 初期値
-      'total_class_count': 0, // 初期値
-    });
+    
+    final newSubject = Subject(
+      id: 0, // データベース側で自動採番される想定
+      subjectName: subjectName,
+      isOnline: 0,
+      attendanceCount: 0,
+      totalClassCount: 0,
+    );
 
-    return newSubjectId;
+    // 新規登録して、生成されたIDをリポジトリから受け取る
+    final int createdId = await _subjectRepository.createSubject(newSubject);
+    return createdId;
   }
 }

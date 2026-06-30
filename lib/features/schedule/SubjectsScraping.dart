@@ -1,22 +1,22 @@
 import 'package:html/parser.dart' as html_parser;
 import 'package:dio/dio.dart' as dio;
 import 'package:html/dom.dart' as html_dom;
-// 💡 インポートパスはプロジェクトに合わせて適宜調整してください
-import '../../core/database/app_database.dart';
+import '../../core/database/models/subject.dart';
+import '../../core/database/providers/subject_providers.dart';
 
 class SubjectsScraping {
-  // 通信を行うためにDioを追加
+  // コンストラクタで SubjectProvider を受け取る設計に統合
+  SubjectsScraping({required this.subjectProvider});
+
+  final SubjectProvider subjectProvider;
   final dio.Dio timetableDio = dio.Dio();
-  // 抽出した科目名を格納するシンプルなリスト
   List<String> subjectNames = [];
 
-  // 本番通信を行うため async 処理に変更
   Future<void> getSubjectNames() async {
     subjectNames.clear();
 
     try {
       print('【通信開始】ScombZの時間割ページを取得しています...');
-      // 🚀 実際のScombZサーバーの時間割ページにアクセス
       final dio.Response response = await timetableDio.get('https://scombz.shibaura-it.ac.jp/lms/timetable');
       final String htmlString = response.data.toString();
 
@@ -35,7 +35,7 @@ class SubjectsScraping {
 
       print('🎉 【解析成功】時間割登録科目数: ${subjectNames.length} 件');
 
-      // 🚀 【新規追加】解析した科目データをSQLiteデータベースに登録/同期する
+      // 🚀 Provider を使ってデータを保存・同期する
       await _saveSubjectsToDatabase();
 
     } on dio.DioException catch (e) {
@@ -47,35 +47,37 @@ class SubjectsScraping {
     }
   }
 
-  /// 🚀 科目リストをSQLiteデータベースに保存・同期する内部メソッド
+  /// 🚀 SubjectProvider を介してデータベースに保存・同期する
   Future<void> _saveSubjectsToDatabase() async {
     print('💾 科目データのデータベース同期を開始します...');
-    final dbHelper = AppDatabase.instance;
 
-    // 既存の getRows メソッドをそのまま使用して、現在の全科目データを取得
-    final List<Map<String, Object?>> existingRows = await dbHelper.getRows(AppTable.subjects);
+    // 1. まず現在の最新データをProviderから取得（ロード）しておく
+    await subjectProvider.loadSubjects();
+    
+    // 2. 現在Provider（DB）が持っている科目名のリストを作る
+    final List<String> existingNames = subjectProvider.subjects
+        .map((subject) => subject.subjectName)
+        .toList();
 
     for (final name in subjectNames) {
-      // 取得したレコード群の中に、同じ科目名があるかチェック
-      bool isAlreadyRegistered = false;
-      for (final row in existingRows) {
-        if (row['subject_name'] == name) {
-          isAlreadyRegistered = true;
-          break;
-        }
-      }
+      if (!existingNames.contains(name)) {
+        // 3. Subjectを作成する「前」に現在時刻を変数に入れる
+        final now = DateTime.now(); 
 
-      if (!isAlreadyRegistered) {
-        // まだ登録されていない科目の場合は新規挿入
-        await dbHelper.insertRow(AppTable.subjects, {
-          'subject_name': name,
-          'is_online': 0,         // 初期値
-          'attendance_count': 0,  // 初期値
-          'total_class_count': 0, // 初期値
-        });
+        // 4. モデルの型（boolやDateTime）に合わせて正しくインスタンス化
+        final newSubject = Subject(
+          subjectName: name,
+          isOnline: false,            // bool型に修正
+          attendanceCount: 0,
+          totalClassCount: 0,
+          createdAt: now,             // 必須項目を追加
+          updatedAt: now,             // 必須項目を追加
+        );
+
+        // 5. Provider経由でDBへ保存
+        await subjectProvider.createSubject(newSubject);
         print(' ➕ 新しい科目を登録しました: $name');
       } else {
-        // すでに登録されている場合はスキップ
         print(' 🔄 科目はすでに登録済みです: $name');
       }
     }
