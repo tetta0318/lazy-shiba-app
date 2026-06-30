@@ -40,16 +40,21 @@ class AppDatabase {
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
-      onCreate: _createDatabase,
+      onCreate: (db, version) async {
+        await _ensureSchema(db);
+      },
+      onOpen: (db) async {
+        await _ensureSchema(db);
+      },
     );
 
     _database = openedDatabase;
     return openedDatabase;
   }
 
-  Future<void> _createDatabase(Database db, int version) async {
+  Future<void> _ensureSchema(Database db) async {
     await db.execute('''
-      CREATE TABLE ${AppTable.subjects} (
+      CREATE TABLE IF NOT EXISTS ${AppTable.subjects} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         subject_name TEXT NOT NULL,
         is_online INTEGER NOT NULL,
@@ -60,6 +65,104 @@ class AppDatabase {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${AppTable.tasks} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        subject_id INTEGER NOT NULL,
+        task_name TEXT NOT NULL,
+        deadline TEXT NOT NULL,
+        url TEXT,
+        feeling INTEGER NOT NULL,
+        status INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(subject_id)
+          REFERENCES ${AppTable.subjects}(id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${AppTable.schedules} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        date TEXT NOT NULL,
+        title TEXT NOT NULL,
+        genre TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    ''');
+
+    await _ensureColumns(
+      db,
+      AppTable.subjects,
+      const {
+        'subject_name': "TEXT NOT NULL DEFAULT ''",
+        'is_online': 'INTEGER NOT NULL DEFAULT 0',
+        'attendance_count': 'INTEGER NOT NULL DEFAULT 0',
+        'total_class_count': 'INTEGER NOT NULL DEFAULT 0',
+        'created_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+        'updated_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+      },
+    );
+    await _ensureColumns(
+      db,
+      AppTable.tasks,
+      const {
+        'subject_id': 'INTEGER NOT NULL DEFAULT 1',
+        'task_name': "TEXT NOT NULL DEFAULT ''",
+        'deadline': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+        'url': 'TEXT',
+        'feeling': 'INTEGER NOT NULL DEFAULT 0',
+        'status': 'INTEGER NOT NULL DEFAULT 0',
+        'created_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+        'updated_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+      },
+    );
+    await _normalizeTasksTable(db);
+    await _ensureColumns(
+      db,
+      AppTable.schedules,
+      const {
+        'date': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+        'title': "TEXT NOT NULL DEFAULT ''",
+        'genre': "TEXT NOT NULL DEFAULT ''",
+        'created_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+        'updated_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+      },
+    );
+  }
+
+  Future<void> _ensureColumns(
+    Database db,
+    String table,
+    Map<String, String> columns,
+  ) async {
+    final existingColumns = await _getColumnNames(db, table);
+    for (final entry in columns.entries) {
+      if (existingColumns.contains(entry.key)) {
+        continue;
+      }
+      await db.execute(
+        'ALTER TABLE $table ADD COLUMN ${entry.key} ${entry.value}',
+      );
+    }
+  }
+
+  Future<Set<String>> _getColumnNames(Database db, String table) async {
+    final rows = await db.rawQuery('PRAGMA table_info($table)');
+    return rows.map((row) => row['name'].toString()).toSet();
+  }
+
+  Future<void> _normalizeTasksTable(Database db) async {
+    final columns = await _getColumnNames(db, AppTable.tasks);
+    if (!columns.contains('title')) {
+      return;
+    }
+
+    const legacyTable = 'tasks_legacy_migration';
+    await db.execute('PRAGMA foreign_keys = OFF');
+    await db.execute('DROP TABLE IF EXISTS $legacyTable');
+    await db.execute('ALTER TABLE ${AppTable.tasks} RENAME TO $legacyTable');
     await db.execute('''
       CREATE TABLE ${AppTable.tasks} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,28 +179,76 @@ class AppDatabase {
       )
     ''');
 
+    final legacyColumns = await _getColumnNames(db, legacyTable);
     await db.execute('''
-      CREATE TABLE ${AppTable.schedules} (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        date TEXT NOT NULL,
-        title TEXT NOT NULL,
-        genre TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+      INSERT OR IGNORE INTO ${AppTable.tasks} (
+        id,
+        subject_id,
+        task_name,
+        deadline,
+        url,
+        feeling,
+        status,
+        created_at,
+        updated_at
       )
+      SELECT
+        ${_legacyColumn(legacyColumns, 'id', fallback: 'NULL')},
+        CASE
+          WHEN CAST(${_legacyColumn(legacyColumns, 'subject_id', fallback: '1')} AS INTEGER) > 0
+            THEN CAST(${_legacyColumn(legacyColumns, 'subject_id', fallback: '1')} AS INTEGER)
+          ELSE 1
+        END,
+        COALESCE(
+          NULLIF(${_legacyColumn(legacyColumns, 'task_name')}, ''),
+          NULLIF(${_legacyColumn(legacyColumns, 'title')}, ''),
+          ''
+        ),
+        COALESCE(
+          NULLIF(${_legacyColumn(legacyColumns, 'deadline')}, ''),
+          '1970-01-01T00:00:00.000'
+        ),
+        NULLIF(${_legacyColumn(legacyColumns, 'url')}, ''),
+        COALESCE(CAST(${_legacyColumn(legacyColumns, 'feeling', fallback: '0')} AS INTEGER), 0),
+        COALESCE(CAST(${_legacyColumn(legacyColumns, 'status', fallback: '0')} AS INTEGER), 0),
+        COALESCE(
+          NULLIF(${_legacyColumn(legacyColumns, 'created_at')}, ''),
+          '1970-01-01T00:00:00.000'
+        ),
+        COALESCE(
+          NULLIF(${_legacyColumn(legacyColumns, 'updated_at')}, ''),
+          '1970-01-01T00:00:00.000'
+        )
+      FROM $legacyTable
     ''');
+    await db.execute('DROP TABLE $legacyTable');
+    await db.execute('PRAGMA foreign_keys = ON');
+  }
+
+  String _legacyColumn(
+    Set<String> columns,
+    String column, {
+    String fallback = "''",
+  }) {
+    return columns.contains(column) ? column : fallback;
   }
 
   Future<List<Map<String, Object?>>> getRows(
     String table, {
+    String? where,
+    List<Object?>? whereArgs,
     String? orderBy,
+    int? limit,
   }) async {
     _checkTable(table);
     final db = await database;
 
     return db.query(
       table,
+      where: where,
+      whereArgs: whereArgs,
       orderBy: orderBy,
+      limit: limit,
     );
   }
 

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../core/database/models/schedule.dart';
+import '../../core/database/models/task.dart' as database_model;
+import '../../core/database/repositories/schedule_repository.dart';
+import '../../core/database/repositories/task_repository.dart';
 import '../sync/portal_sync_screen.dart';
-
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -11,41 +14,90 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final TaskRepository _taskRepository = TaskRepository();
+  final ScheduleRepository _scheduleRepository = ScheduleRepository();
+
+  List<database_model.Task> _tasks = [];
+  List<Schedule> _schedules = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSummaries();
+  }
+
+  Future<void> _loadSummaries() async {
+    final tasks = await _taskRepository.getTasks();
+    final schedules = await _scheduleRepository.getSchedules();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _tasks = tasks;
+      _schedules = schedules;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final upcomingSchedule = _firstUpcomingSchedule();
+    final incompleteTasks =
+        _tasks.where((task) => task.status == 0).take(2).toList();
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('ホーム', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'ホーム',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. 全体の成績エリア（外部設計書の記述に準拠）
               _buildSectionTitle('全体の成績'),
               Card(
                 elevation: 2,
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(16),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
+                    children: const [
                       Column(
-                        children: const [
-                          Text('現在のGPA', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                        children: [
+                          Text(
+                            '現在のGPA',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
                           SizedBox(height: 8),
-                          Text('3.25', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                          Text(
+                            '3.25',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                       Column(
-                        children: const [
-                          Text('全体の成績', style: TextStyle(fontSize: 14, color: Colors.grey)),
+                        children: [
+                          Text(
+                            '全体の成績',
+                            style: TextStyle(fontSize: 14, color: Colors.grey),
+                          ),
                           SizedBox(height: 8),
-                          Text('35%', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blue)),
+                          Text(
+                            '35%',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -53,42 +105,47 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
-              // 2. 一番近い予定・休校日エリア（外部設計書の記述に準拠）
               _buildSectionTitle('一番近い休校日・予定'),
               Card(
                 elevation: 2,
                 color: Colors.orange.shade50,
-                child: const ListTile(
-                  leading: Icon(Icons.calendar_month, color: Colors.orange),
-                  title: Text('○○中間テスト', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('残り時間: 1か月'),
+                child: ListTile(
+                  leading: const Icon(Icons.calendar_month, color: Colors.orange),
+                  title: Text(
+                    upcomingSchedule?.title ?? '予定はありません',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    upcomingSchedule == null
+                        ? '直近の予定は未登録です'
+                        : _formatDaysUntil(upcomingSchedule.date),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
-
-              // 3. 直近の課題サマリーエリア（外部・内部設計書の「課題名 あと○日」に準拠）
               _buildSectionTitle('直近の未完了課題'),
               Card(
                 elevation: 2,
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.assignment, color: Colors.red),
-                      title: const Text('ソフトウェア開発演習 宿題1'),
-                      subtitle: const Text('あと2日'),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.assignment, color: Colors.orange),
-                      title: const Text('アルゴリズムとデータ構造 レポート'),
-                      subtitle: const Text('あと5日'),
-                    ),
-                  ],
-                ),
+                child: incompleteTasks.isEmpty
+                    ? const ListTile(title: Text('未完了課題はありません。'))
+                    : Column(
+                        children: [
+                          for (final task in incompleteTasks) ...[
+                            ListTile(
+                              leading: const Icon(
+                                Icons.assignment,
+                                color: Colors.red,
+                              ),
+                              title: Text(task.taskName),
+                              subtitle: Text(_formatDaysUntil(task.deadline)),
+                            ),
+                            if (task != incompleteTasks.last)
+                              const Divider(height: 1),
+                          ],
+                        ],
+                      ),
               ),
               const SizedBox(height: 24),
-
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -100,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       MaterialPageRoute(
                         builder: (context) => const PortalSyncScreen(),
                       ),
-                    );
+                    ).then((_) => _loadSummaries());
                   },
                 ),
               ),
@@ -111,7 +168,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // セクションのタイトルを見栄えよく表示するための共通Widget
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
@@ -120,5 +176,32 @@ class _HomeScreenState extends State<HomeScreen> {
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );
+  }
+
+  Schedule? _firstUpcomingSchedule() {
+    final today = DateTime.now();
+    for (final schedule in _schedules) {
+      final date = schedule.date;
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      if (!dateOnly.isBefore(DateTime(today.year, today.month, today.day))) {
+        return schedule;
+      }
+    }
+    return null;
+  }
+
+  String _formatDaysUntil(DateTime date) {
+    final today = DateTime.now();
+    final days = DateTime(date.year, date.month, date.day)
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
+
+    if (days == 0) {
+      return '今日';
+    }
+    if (days > 0) {
+      return 'あと$days日';
+    }
+    return '${days.abs()}日前';
   }
 }

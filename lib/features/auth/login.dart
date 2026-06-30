@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:lazy_shiba_app/shared/main_layout_screen.dart';
-import '../home/home_screen.dart'; 
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../schedule/SubjectsScraping.dart';
+import '../tasks/TasksScraping.dart';
+import 'LoginWebviewPage.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,25 +16,69 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  
-  bool _isLoading = false;
-  
-  //パスワードを隠すかどうかを管理する変数（初期値はtrue＝隠す）
-  bool _isObscure = true; 
 
-  void _handleLogin() async {
+  bool _isLoading = false;
+  bool _isObscure = true;
+  String _errorMessage = '';
+
+  Future<void> _handleLogin() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('scombz_id', _idController.text);
+    await prefs.setString('scombz_password', _passwordController.text);
+
+    final grabbedCookies = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => LoginWebviewPage(
+          id: _idController.text,
+          password: _passwordController.text,
+        ),
+      ),
+    );
+
+    if (grabbedCookies == null || grabbedCookies.isEmpty) {
+      setState(() {
+        _errorMessage = '連携がキャンセルされました。';
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
+      _errorMessage = '';
     });
 
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      final tasksScraper = TasksScraping();
+      tasksScraper.taskDio.options.headers['Cookie'] = grabbedCookies;
+      await tasksScraper.getTasks();
 
-    if (!mounted) return;
+      final subjectsScraper = SubjectsScraping();
+      subjectsScraper.timetableDio.options.headers['Cookie'] = grabbedCookies;
+      await subjectsScraper.getSubjectNames();
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const MainLayoutScreen()),
-    );
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const MainLayoutScreen()),
+      );
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = '同期中にエラーが発生しました: $error';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -45,7 +93,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -61,8 +109,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 40),
-
-              // 学籍番号入力欄
               TextField(
                 controller: _idController,
                 decoration: const InputDecoration(
@@ -73,34 +119,34 @@ class _LoginScreenState extends State<LoginScreen> {
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 16),
-
-              // 【変更】パスワード入力欄
               TextField(
                 controller: _passwordController,
-                // 変数を使うため、InputDecorationの前の const を外しています
                 decoration: InputDecoration(
                   labelText: 'パスワード',
                   prefixIcon: const Icon(Icons.lock),
                   border: const OutlineInputBorder(),
-                  // 【追加】入力欄の右端に配置するアイコンボタン
                   suffixIcon: IconButton(
-                    // _isObscure の状態（true/false）に合わせてアイコンを切り替える
                     icon: Icon(
                       _isObscure ? Icons.visibility_off : Icons.visibility,
                     ),
                     onPressed: () {
-                      // ボタンが押されたら、_isObscure の true/false を反転させて画面を更新する
                       setState(() {
                         _isObscure = !_isObscure;
                       });
                     },
                   ),
                 ),
-                // 【変更】固定の true ではなく、変数と連動させる
-                obscureText: _isObscure, 
+                obscureText: _isObscure,
               ),
+              if (_errorMessage.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text(
+                  _errorMessage,
+                  style: const TextStyle(color: Colors.red, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: 32),
-
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -112,11 +158,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text('ScombZ にログイン', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      : const Text(
+                          'ScombZ にログイン',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
               const SizedBox(height: 24),
-              
               const Text(
                 '※ScombZのログイン情報を入力してください。\n入力された情報は端末内にのみ安全に保存されます。',
                 style: TextStyle(fontSize: 12, color: Colors.grey),

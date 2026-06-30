@@ -9,9 +9,14 @@ class SubjectRepository {
   final AppDatabase _database;
 
   Future<int> createSubject(Subject subject) async {
+    final values = subject.toMap();
+    if (subject.id == null) {
+      values.remove('id');
+    }
+
     return _database.insertRow(
       AppTable.subjects,
-      subject.toMap()..remove('id'),
+      values,
     );
   }
 
@@ -34,6 +39,45 @@ class SubjectRepository {
     return Subject.fromMap(map);
   }
 
+  Future<Subject?> getSubjectByName(String subjectName) async {
+    final maps = await _database.getRows(
+      AppTable.subjects,
+      where: 'subject_name = ?',
+      whereArgs: [subjectName],
+      limit: 1,
+    );
+
+    if (maps.isEmpty) {
+      return null;
+    }
+
+    return Subject.fromMap(maps.first);
+  }
+
+  Future<int> findOrCreateSubject({
+    required String subjectName,
+    bool isOnline = false,
+    int attendanceCount = 0,
+    int totalClassCount = 0,
+  }) async {
+    final existingSubject = await getSubjectByName(subjectName);
+    if (existingSubject?.id != null) {
+      return existingSubject!.id!;
+    }
+
+    final now = DateTime.now();
+    return createSubject(
+      Subject(
+        subjectName: subjectName,
+        isOnline: isOnline,
+        attendanceCount: attendanceCount,
+        totalClassCount: totalClassCount,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+  }
+
   Future<int> updateSubject(Subject subject) async {
     if (subject.id == null) {
       throw ArgumentError('更新するSubjectにはidが必要です');
@@ -53,6 +97,28 @@ class SubjectRepository {
       AppTable.subjects,
       id,
       {'attendance_count': attendanceCount},
+    );
+  }
+
+  Future<int> updateTotalClassCount({
+    required int id,
+    required int totalClassCount,
+  }) async {
+    return _database.updateRow(
+      AppTable.subjects,
+      id,
+      {'total_class_count': totalClassCount},
+    );
+  }
+
+  Future<int> updateOnlineStatus({
+    required int id,
+    required bool isOnline,
+  }) async {
+    return _database.updateRow(
+      AppTable.subjects,
+      id,
+      {'is_online': isOnline ? 1 : 0},
     );
   }
 
