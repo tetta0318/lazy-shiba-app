@@ -1,249 +1,144 @@
-import 'package:lazy_shiba_app/core/database/app_database.dart';
+import 'models/schedule.dart';
+import 'models/task.dart';
+import 'repositories/schedule_repository.dart';
+import 'repositories/subject_repository.dart';
+import 'repositories/task_repository.dart';
 
 class SeedData {
   SeedData._();
 
+  static final _subjectRepository = SubjectRepository();
+  static final _taskRepository = TaskRepository();
+  static final _scheduleRepository = ScheduleRepository();
+
   static Future<void> insertIfEmpty() async {
-    final db = await AppDatabase.instance.database;
-
-    await _seedSubjects(db);
-    await _seedTasks(db);
-    await _seedSchedules(db);
+    await _seedSubjects();
+    await _seedTasks();
+    await _seedSchedules();
   }
 
-  static Future<void> _seedSubjects(dynamic db) async {
-    final count = await db.rawQuery(
-      'SELECT COUNT(*) AS count FROM subjects',
-    );
-
-    if (count.first['count'] != 0) {
+  static Future<void> _seedSubjects() async {
+    final subjects = await _subjectRepository.getSubjects();
+    if (subjects.isNotEmpty) {
       return;
     }
 
-    final now = DateTime.now().toIso8601String();
+    const seedSubjects = [
+      '情報セキュリティ',
+      'Java応用プログラミング（1Q）',
+      '人工知能プログラミング（2Q）',
+      'ソフトウェア工学',
+      'ソフトウェア開発演習',
+      '人工知能',
+      'データ解析法',
+      '組込みシステム',
+    ];
 
-    await db.insert('subjects', {
-      'subject_name': '情報セキュリティ',
-      'is_online': 0,
-      'attendance_count': 12,
-      'total_class_count': 15,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('subjects', {
-      'subject_name': 'Java応用プログラミング（1Q）',
-      'is_online': 1,
-      'attendance_count': 10,
-      'total_class_count': 15,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('subjects', {
-      'subject_name': '人工知能プログラミング（2Q）',
-      'is_online': 0,
-      'attendance_count': 8,
-      'total_class_count': 15,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('subjects', {
-      'subject_name': 'ソフトウェア工学',
-      'is_online': 0,
-      'attendance_count': 8,
-      'total_class_count': 15,
-      'created_at': now,
-      'updated_at': now,
-    });
-    
-    await db.insert('subjects', {
-      'subject_name': 'ソフトウェア開発演習',
-      'is_online': 0,
-      'attendance_count': 8,
-      'total_class_count': 15,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('subjects', {
-      'subject_name': '人工知能',
-      'is_online': 0,
-      'attendance_count': 8,
-      'total_class_count': 15,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('subjects', {
-      'subject_name': 'データ解析法',
-      'is_online': 0,
-      'attendance_count': 8,
-      'total_class_count': 15,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('subjects', {
-      'subject_name': '組込みシステム',
-      'is_online': 0,
-      'attendance_count': 8,
-      'total_class_count': 15,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('subjects', {
-      'subject_name': 'ソフトウェア工学',
-      'is_online': 0,
-      'attendance_count': 8,
-      'total_class_count': 15,
-      'created_at': now,
-      'updated_at': now,
-    });
-
+    for (final subjectName in seedSubjects) {
+      await _subjectRepository.findOrCreateSubject(
+        subjectName: subjectName,
+        attendanceCount: subjectName == '情報セキュリティ' ? 12 : 8,
+        totalClassCount: 15,
+        isOnline: subjectName == 'Java応用プログラミング（1Q）',
+      );
+    }
   }
 
-  static Future<void> _seedTasks(dynamic db) async {
-    final count = await db.rawQuery(
-      'SELECT COUNT(*) AS count FROM tasks',
-    );
-
-    if (count.first['count'] != 0) {
+  static Future<void> _seedTasks() async {
+    final tasks = await _taskRepository.getTasks();
+    if (tasks.isNotEmpty) {
       return;
     }
 
-    final now = DateTime.now().toIso8601String();
-
-    await db.insert('tasks', {
-      'subject_id': 1,
-      'task_name': 'レポート課題２',
-      'deadline':
-          DateTime.now()
-              .add(const Duration(days: 7))
-              .toIso8601String(),
-      'url': 'https://example.com/report',
-      'feeling': 3,
-      'status': 0,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('tasks', {
-      'subject_id': 2,
-      'task_name': '課題（４）',
-      'deadline':
-          DateTime.now()
-              .add(const Duration(days: 3))
-              .toIso8601String(),
-      'url': null,
-      'feeling': 2,
-      'status': 0,
-      'created_at': now,
-      'updated_at': now,
-    });
-
-    await db.insert('tasks', {
-      'subject_id': 3,
-      'task_name': '課題1 （事前課題）',
-      'deadline':
-          DateTime.now()
-              .add(const Duration(days: 14))
-              .toIso8601String(),
-      'url': 'https://example.com/flutter',
-      'feeling': 4,
-      'status': 1,
-      'created_at': now,
-      'updated_at': now,
-    });
-  }
-
-  static Future<void> _seedSchedules(dynamic db) async {
-    final count = await db.rawQuery(
-      'SELECT COUNT(*) AS count FROM schedules',
+    final now = DateTime.now();
+    final reportSubjectId = await _subjectRepository.findOrCreateSubject(
+      subjectName: '情報セキュリティ',
+      attendanceCount: 12,
+      totalClassCount: 15,
+    );
+    final javaSubjectId = await _subjectRepository.findOrCreateSubject(
+      subjectName: 'Java応用プログラミング（1Q）',
+      isOnline: true,
+      attendanceCount: 10,
+      totalClassCount: 15,
+    );
+    final aiSubjectId = await _subjectRepository.findOrCreateSubject(
+      subjectName: '人工知能プログラミング（2Q）',
+      attendanceCount: 8,
+      totalClassCount: 15,
     );
 
-    if (count.first['count'] != 0) {
+    final seedTasks = [
+      Task(
+        subjectId: reportSubjectId,
+        taskName: 'レポート課題２',
+        deadline: now.add(const Duration(days: 7)),
+        url: 'https://example.com/report',
+        feeling: 3,
+        status: 0,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      Task(
+        subjectId: javaSubjectId,
+        taskName: '課題（４）',
+        deadline: now.add(const Duration(days: 3)),
+        url: null,
+        feeling: 2,
+        status: 0,
+        createdAt: now,
+        updatedAt: now,
+      ),
+      Task(
+        subjectId: aiSubjectId,
+        taskName: '課題1 （事前課題）',
+        deadline: now.add(const Duration(days: 14)),
+        url: 'https://example.com/flutter',
+        feeling: 4,
+        status: 1,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    ];
+
+    for (final task in seedTasks) {
+      await _taskRepository.createTask(task);
+    }
+  }
+
+  static Future<void> _seedSchedules() async {
+    final schedules = await _scheduleRepository.getSchedules();
+    if (schedules.isNotEmpty) {
       return;
     }
 
-    final now = DateTime.now().toIso8601String();
+    final now = DateTime.now();
+    final seedSchedules = [
+      ('2026-04-02', '入学式', '大学行事'),
+      ('2026-04-14', '春学期授業開始', '授業'),
+      ('2026-05-17', '大宮祭', '大学行事'),
+      ('2026-06-23', '学生大会（休講）', '休講'),
+      ('2026-07-29', 'TOEIC IP試験', '試験'),
+      ('2026-08-21', '春学期成績公開', '成績'),
+      ('2026-09-26', '秋学期授業開始', '授業'),
+      ('2026-10-31', '芝浦祭', '大学行事'),
+      ('2026-11-04', '創立記念日', '大学行事'),
+      ('2026-11-21', '秋2ターム授業開始', '授業'),
+      ('2027-01-26', 'TOEIC IP試験', '試験'),
+      ('2027-02-12', '秋学期成績公開', '成績'),
+      ('2027-03-18', '学位記授与式', '大学行事'),
+    ];
 
-    final schedules = [
-    {
-      'date': '2026-04-02',
-      'title': '入学式',
-      'genre': '大学行事',
-    },
-    {
-      'date': '2026-04-14',
-      'title': '春学期授業開始',
-      'genre': '授業',
-    },
-    {
-      'date': '2026-05-17',
-      'title': '大宮祭',
-      'genre': '大学行事',
-    },
-    {
-      'date': '2026-06-23',
-      'title': '学生大会（休講）',
-      'genre': '休講',
-    },
-    {
-      'date': '2026-07-29',
-      'title': 'TOEIC IP試験',
-      'genre': '試験',
-    },
-    {
-      'date': '2026-08-21',
-      'title': '春学期成績公開',
-      'genre': '成績',
-    },
-    {
-      'date': '2026-09-26',
-      'title': '秋学期授業開始',
-      'genre': '授業',
-    },
-    {
-      'date': '2026-10-31',
-      'title': '芝浦祭',
-      'genre': '大学行事',
-    },
-    {
-      'date': '2026-11-04',
-      'title': '創立記念日',
-      'genre': '大学行事',
-    },
-    {
-      'date': '2026-11-21',
-      'title': '秋2ターム授業開始',
-      'genre': '授業',
-    },
-    {
-      'date': '2027-01-26',
-      'title': 'TOEIC IP試験',
-      'genre': '試験',
-    },
-    {
-      'date': '2027-02-12',
-      'title': '秋学期成績公開',
-      'genre': '成績',
-    },
-    {
-      'date': '2027-03-18',
-      'title': '学位記授与式',
-      'genre': '大学行事',
-    },
-  ];
-
-    for (final schedule in schedules) {
-      await db.insert('schedules', {
-        ...schedule,
-        'created_at': now,
-        'updated_at': now,
-      });
+    for (final (date, title, genre) in seedSchedules) {
+      await _scheduleRepository.createSchedule(
+        Schedule(
+          date: DateTime.parse(date),
+          title: title,
+          genre: genre,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
     }
   }
 }

@@ -1,8 +1,10 @@
 import 'package:html/parser.dart' as html_parser;
 import 'package:dio/dio.dart' as dio;
 import 'package:html/dom.dart' as html_dom;
-// 💡 前回のAppDatabaseが定義されているファイルをインポートしてください
-import '../../core/database/app_database.dart';
+
+import '../../core/database/models/task.dart';
+import '../../core/database/repositories/subject_repository.dart';
+import '../../core/database/repositories/task_repository.dart';
 
 class Assignment {
   final int taskId;
@@ -27,6 +29,14 @@ class Assignment {
 }
 
 class TasksScraping {
+  TasksScraping({
+    SubjectRepository? subjectRepository,
+    TaskRepository? taskRepository,
+  })  : _subjectRepository = subjectRepository ?? SubjectRepository(),
+        _taskRepository = taskRepository ?? TaskRepository();
+
+  final SubjectRepository _subjectRepository;
+  final TaskRepository _taskRepository;
   final dio.Dio taskDio = dio.Dio();
   List<Assignment> assignmentList = [];
 
@@ -107,64 +117,62 @@ class TasksScraping {
   /// 🚀 課題リストをSQLiteデータベースに保存・同期する内部メソッド
   Future<void> _saveTasksToDatabase() async {
     print('💾 データベースへの同期を開始します...');
-    final dbHelper = AppDatabase.instance;
 
     for (final assignment in assignmentList) {
-      // 1. 科目（subjects）のIDを特定、または新規登録
-      int finalSubjectTableId = await _findOrCreateSubject(assignment.subjectName);
-
-      // 2. すでに同じtaskIdの課題が登録されているか確認
-      final existingTask = await dbHelper.getRowById(AppTable.tasks, assignment.taskId);
-
-      // データベースに渡すMapデータの作成
-      final taskValues = {
-        'subject_id': finalSubjectTableId,
-        'task_name': assignment.taskName,
-        'deadline': assignment.deadline,
-        'url': assignment.submissionURL,
-        'feeling': assignment.taskresponse, // 元コードの初期値0
-        'status': assignment.taskstatus,     // 元コードの初期値0
-      };
+      final subjectId = await _subjectRepository.findOrCreateSubject(
+        subjectName: assignment.subjectName,
+      );
+      final existingTask = await _taskRepository.getTaskById(assignment.taskId);
+      final now = DateTime.now();
+      final task = Task(
+        id: assignment.taskId,
+        subjectId: subjectId,
+        taskName: assignment.taskName,
+        deadline: _parseDeadline(assignment.deadline),
+        url: assignment.submissionURL.isEmpty ? null : assignment.submissionURL,
+        feeling: assignment.taskresponse,
+        status: assignment.taskstatus,
+        createdAt: existingTask?.createdAt ?? now,
+        updatedAt: now,
+      );
 
       if (existingTask == null) {
-        // 未登録の場合は、IDを指定して新規挿入 (ID自動生成ではなく、ScombZのtaskIdをそのままidにする)
-        final finalValuesWithId = {
-          'id': assignment.taskId,
-          ...taskValues,
-        };
-        // 既存のinsertRowは内部でcreated_atなどを自動付与するので、そのまま使えます
-        await dbHelper.insertRow(AppTable.tasks, finalValuesWithId);
+        await _taskRepository.createTask(task);
         print(' ➕ 新規課題を登録しました: ${assignment.taskName}');
       } else {
-        // 既に登録済みの場合は、内容を更新
-        await dbHelper.updateRow(AppTable.tasks, assignment.taskId, taskValues);
+        await _taskRepository.updateTask(task);
         print(' 🔄 既存の課題を更新しました: ${assignment.taskName}');
       }
     }
     print('✨ すべての課題データの同期が完了しました！');
   }
 
-  /// 科目名から既存の科目IDを探し、なければ新規作成してそのIDを返すヘルパーメソッド
-  Future<int> _findOrCreateSubject(String subjectName) async {
-    final dbHelper = AppDatabase.instance;
-    
-    // 全科目を取得して、名前が一致するものを探す
-    final allSubjects = await dbHelper.getRows(AppTable.subjects);
-    for (final row in allSubjects) {
-      if (row['subject_name'] == subjectName) {
-        return row['id'] as int;
-      }
+  DateTime _parseDeadline(String deadline) {
+    final normalized = deadline
+        .replaceAll('年', '-')
+        .replaceAll('月', '-')
+        .replaceAll('日', ' ')
+        .replaceAll('/', '-')
+        .trim();
+
+    final parsed = DateTime.tryParse(normalized);
+    if (parsed != null) {
+      return parsed;
     }
 
-    // 見つからなかった場合は新規登録
-    print(' 🏫 新しい科目を検出したため登録します: $subjectName');
-    final newSubjectId = await dbHelper.insertRow(AppTable.subjects, {
-      'subject_name': subjectName,
-      'is_online': 0,         // 初期値（スクレイピングだけでは不明なため）
-      'attendance_count': 0,  // 初期値
-      'total_class_count': 0, // 初期値
-    });
+    final match = RegExp(
+      r'(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})(?:[日\s]+(\d{1,2}):(\d{1,2}))?',
+    ).firstMatch(deadline);
 
-    return newSubjectId;
+    if (match != null) {
+      final year = int.parse(match.group(1)!);
+      final month = int.parse(match.group(2)!);
+      final day = int.parse(match.group(3)!);
+      final hour = int.tryParse(match.group(4) ?? '') ?? 23;
+      final minute = int.tryParse(match.group(5) ?? '') ?? 59;
+      return DateTime(year, month, day, hour, minute);
+    }
+
+    return DateTime.now();
   }
 }

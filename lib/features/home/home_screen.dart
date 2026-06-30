@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/database/models/schedule.dart';
+import '../../core/database/models/task.dart' as database_model;
+import '../../core/database/repositories/schedule_repository.dart';
+import '../../core/database/repositories/task_repository.dart';
 import '../grades/grades_page.dart';
 import '../schedule/schedule_screen.dart';
 import '../sync/portal_sync_screen.dart';
@@ -13,7 +17,31 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final TaskRepository _taskRepository = TaskRepository();
+  final ScheduleRepository _scheduleRepository = ScheduleRepository();
+
   int _selectedIndex = 0; // 現在選択されているナビゲーションバーのインデックス
+  List<database_model.Task> _tasks = [];
+  List<Schedule> _schedules = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSummaries();
+  }
+
+  Future<void> _loadSummaries() async {
+    final tasks = await _taskRepository.getTasks();
+    final schedules = await _scheduleRepository.getSchedules();
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _tasks = tasks;
+      _schedules = schedules;
+    });
+  }
 
   Future<void> _openSection(int index) async {
     setState(() {
@@ -45,6 +73,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final upcomingSchedule = _firstUpcomingSchedule();
+    final incompleteTasks =
+        _tasks.where((task) => task.status == 0).take(2).toList();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('ホーム', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -90,10 +122,17 @@ class _HomeScreenState extends State<HomeScreen> {
               Card(
                 elevation: 2,
                 color: Colors.orange.shade50,
-                child: const ListTile(
-                  leading: Icon(Icons.calendar_month, color: Colors.orange),
-                  title: Text('○○中間テスト', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text('残り時間: 1か月'),
+                child: ListTile(
+                  leading: const Icon(Icons.calendar_month, color: Colors.orange),
+                  title: Text(
+                    upcomingSchedule?.title ?? '予定はありません',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    upcomingSchedule == null
+                        ? '直近の予定は未登録です'
+                        : _formatDaysUntil(upcomingSchedule.date),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -102,21 +141,24 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildSectionTitle('直近の未完了課題'),
               Card(
                 elevation: 2,
-                child: Column(
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.assignment, color: Colors.red),
-                      title: const Text('ソフトウェア開発演習 宿題1'),
-                      subtitle: const Text('あと2日'),
-                    ),
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.assignment, color: Colors.orange),
-                      title: const Text('アルゴリズムとデータ構造 レポート'),
-                      subtitle: const Text('あと5日'),
-                    ),
-                  ],
-                ),
+                child: incompleteTasks.isEmpty
+                    ? const ListTile(title: Text('未完了課題はありません。'))
+                    : Column(
+                        children: [
+                          for (final task in incompleteTasks) ...[
+                            ListTile(
+                              leading: const Icon(
+                                Icons.assignment,
+                                color: Colors.red,
+                              ),
+                              title: Text(task.taskName),
+                              subtitle: Text(_formatDaysUntil(task.deadline)),
+                            ),
+                            if (task != incompleteTasks.last)
+                              const Divider(height: 1),
+                          ],
+                        ],
+                      ),
               ),
               const SizedBox(height: 24),
 
@@ -163,5 +205,32 @@ class _HomeScreenState extends State<HomeScreen> {
         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
       ),
     );
+  }
+
+  Schedule? _firstUpcomingSchedule() {
+    final today = DateTime.now();
+    for (final schedule in _schedules) {
+      final date = schedule.date;
+      final dateOnly = DateTime(date.year, date.month, date.day);
+      if (!dateOnly.isBefore(DateTime(today.year, today.month, today.day))) {
+        return schedule;
+      }
+    }
+    return null;
+  }
+
+  String _formatDaysUntil(DateTime date) {
+    final today = DateTime.now();
+    final days = DateTime(date.year, date.month, date.day)
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
+
+    if (days == 0) {
+      return '今日';
+    }
+    if (days > 0) {
+      return 'あと$days日';
+    }
+    return '${days.abs()}日前';
   }
 }
