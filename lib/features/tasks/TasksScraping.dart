@@ -3,9 +3,7 @@ import 'package:dio/dio.dart' as dio;
 import 'package:html/dom.dart' as html_dom;
 
 import '../../core/database/models/subject.dart';
-import '../../core/database/providers/subject_providers.dart';
 import '../../core/database/models/task.dart';
-import '../../core/database/providers/task_providers.dart';
 import '../../core/database/repositories/task_repository.dart';
 import '../../core/database/repositories/subject_repository.dart';
 
@@ -132,10 +130,12 @@ class TasksScraping {
         id: assignment.taskId,
         subjectId: finalSubjectTableId,
         taskName: assignment.taskName,
-        deadline: assignment.deadline,
+        deadline: DateTime.tryParse(assignment.deadline) ?? DateTime.now(),
         url: assignment.submissionURL,
         feeling: assignment.taskresponse,
         status: assignment.taskstatus,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
 
       if (!isExisting) {
@@ -160,18 +160,22 @@ class TasksScraping {
     
     for (final subject in allSubjects) {
       if (subject.subjectName == subjectName) {
-        return subject.id; // 既存の科目IDを返す
+        final existingId = subject.id;
+        if (existingId != null) {
+          return existingId; // 既存の科目IDを返す
+        }
       }
     }
 
     print(' 🏫 新しい科目を検出したため登録します: $subjectName');
     
     final newSubject = Subject(
-      id: 0, // データベース側で自動採番される想定
       subjectName: subjectName,
-      isOnline: 0,
+      isOnline: false,
       attendanceCount: 0,
       totalClassCount: 0,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
     );
 
     // 新規登録して、生成されたIDをリポジトリから受け取る

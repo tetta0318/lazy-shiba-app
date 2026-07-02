@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 import 'task_model.dart';
 import 'priority_setting_screen.dart';
 import 'completion_report_screen.dart';
@@ -11,6 +12,9 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
+  static const String _widgetProviderName = 'com.example.lazy_shiba_app.TaskWidgetProvider';
+  static const String _widgetDataKey = 'task_message';
+
  ////////////// // 設計書に基づいた初期ダミーデータ////////////////////////////////////
   final List<TaskMock> _tasks = [
     TaskMock(id: '1', name: 'システム要件定義書の提出', deadline: 'あと2日', complete: true),
@@ -18,10 +22,52 @@ class _TasksScreenState extends State<TasksScreen> {
     TaskMock(id: '3', name: 'プログラミング演習小テスト', deadline: 'あと7日', complete: false),
   ];
 ////////////////////////////////////////////////////////////////////////////////////
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _syncWidget();
+    });
+  }
+
+  Future<void> _syncWidget({int? completionReport}) async {
+    final message = _buildWidgetMessage(completionReport: completionReport);
+
+    try {
+      await HomeWidget.saveWidgetData<String>(_widgetDataKey, message);
+      await HomeWidget.updateWidget(qualifiedAndroidName: _widgetProviderName);
+    } catch (_) {
+      // ウィジェット未配置や権限差異では失敗しても画面操作を止めない。
+    }
+  }
+
+  String _buildWidgetMessage({int? completionReport}) {
+    TaskMock? nextTask;
+    for (final task in _tasks) {
+      if (!task.complete) {
+        nextTask = task;
+        break;
+      }
+    }
+
+    final parts = <String>[];
+
+    if (completionReport != null) {
+      parts.add('完了報告 $completionReport%');
+    }
+
+    if (nextTask != null) {
+      parts.add('次の課題: ${nextTask.name} (${nextTask.deadline})');
+    } else {
+      parts.add('すべての課題が完了しました');
+    }
+
+    return parts.join(' / ');
+  }
   @override
   Widget build(BuildContext context) {
-
-    _tasks.sort((a, b) {
+    final visibleTasks = [..._tasks]..sort((a, b) {
       if (a.complete == b.complete) return 0; // 状態が同じならそのまま
       return a.complete ? 1 : -1;             // aが完了(true)ならリストの後ろに移動させる
     });
@@ -36,8 +82,8 @@ class _TasksScreenState extends State<TasksScreen> {
         // 2. 更新ボタンを右端(actions)から左端(leading)に移動
         leading: IconButton(
           icon: const Icon(Icons.refresh),
-          onPressed: () {
-            // TODO: 同期処理 (M3-2)
+          onPressed: () async {
+            await _syncWidget();
           },
         ),
         
@@ -62,6 +108,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       _tasks.clear();
                       _tasks.addAll(updatedList);
                     });
+                    _syncWidget();
                   }
                 });
               },
@@ -72,9 +119,9 @@ class _TasksScreenState extends State<TasksScreen> {
           // 課題一覧リスト
           Expanded(
             child: ListView.builder(
-              itemCount: _tasks.length,
+              itemCount: visibleTasks.length,
               itemBuilder: (context, index) {
-                final task = _tasks[index];
+                final task = visibleTasks[index];
                 return Card(
                   // 完了(true)なら背景を少しグレーにする
                   color: task.complete ? Colors.grey.shade200 : Colors.white,
@@ -102,10 +149,14 @@ class _TasksScreenState extends State<TasksScreen> {
                         ),
                         onPressed: () {
                         // 完了報告画面へナビゲート
-                          Navigator.push(
+                          Navigator.push<int>(
                             context,
                             MaterialPageRoute(builder: (context) => const CompletionReportScreen()),
-                          );
+                          ).then((reportedScore) {
+                            if (reportedScore != null) {
+                              _syncWidget(completionReport: reportedScore);
+                            }
+                          });
                         },
                         child: const Text('完了報告する', style: TextStyle(fontSize: 12)),
                       )

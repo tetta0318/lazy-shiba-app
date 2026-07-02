@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../home/home_screen.dart'; 
 import 'LoginWebviewPage.dart';
+import '../../core/database/providers/subject_providers.dart';
 import '../schedule/SubjectsScraping.dart';
 import '../tasks/TasksScraping.dart';
 
@@ -20,16 +21,13 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isObscure = true; 
   String _errorMessage = ''; // 🌟【追加】エラーメッセージを保持する変数
 
-  // 各種取得データを保持する変数（元コードの_startSyncで使われていたもの）
-  List<dynamic> _fetchedTasks = [];
-  List<dynamic> _fetchedSubjects = [];
-
   // 🌟【変更】ダミーの _handleLogin を、Cookie回収＆スクレイピングの _startSync に統合・変更
   Future<void> _handleLogin() async {
     // 1. WebView画面を開き、入力されたIDとパスワードを渡す
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('scombz_id', _idController.text);
     await prefs.setString('scombz_password', _passwordController.text);
+    if (!mounted) return;
     final grabbedCookies = await Navigator.push<String>(
       context,
       MaterialPageRoute(
@@ -61,19 +59,15 @@ class _LoginScreenState extends State<LoginScreen> {
       tasksScraper.taskDio.options.headers['Cookie'] = grabbedCookies;
       await tasksScraper.getTasks();
 
-      final subjectsScraper = SubjectsScraping();
+      final subjectProvider = SubjectProvider();
+      final subjectsScraper = SubjectsScraping(subjectProvider: subjectProvider);
       subjectsScraper.timetableDio.options.headers['Cookie'] = grabbedCookies;
       await subjectsScraper.getSubjectNames();
 
       if (!mounted) return;
 
-      // 取得データをセット
-      setState(() {
-        _fetchedTasks = tasksScraper.assignmentList;
-        _fetchedSubjects = subjectsScraper.subjectNames;
-      });
-
       // 3. すべて成功したら、ホーム画面へ移動（戻れないようにReplacement）
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const HomeScreen()),

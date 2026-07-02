@@ -50,8 +50,7 @@ class _CompletionReportScreenState extends State<CompletionReportScreen> {
             ElevatedButton(
               style: ElevatedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
               onPressed: () {
-                // TODO: 完了報告の送信処理 (M3-4)
-                Navigator.pop(context);
+                Navigator.pop(context, _satisfactionLevel.round());
               },
               child: const Text('確定', style: TextStyle(fontSize: 14)),
             ),

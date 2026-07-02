@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // 🌟パッケージをインポート
 
 import '../auth/LoginWebviewPage.dart';
+import '../../core/database/providers/subject_providers.dart';
 import '../schedule/SubjectsScraping.dart';
 import '../tasks/TasksScraping.dart';
 
@@ -201,6 +202,8 @@ class _PortalSyncScreenState extends State<PortalSyncScreen> {
       print('データの保存に失敗しました: $e');
     }
 
+    if (!mounted) return;
+
     // WebView画面を起動し、コントローラーから直でIDとパスワードを渡す
     final grabbedCookies = await Navigator.push<String>(
       context,
@@ -229,7 +232,8 @@ class _PortalSyncScreenState extends State<PortalSyncScreen> {
       tasksScraper.taskDio.options.headers['Cookie'] = grabbedCookies;
       await tasksScraper.getTasks();
 
-      final subjectsScraper = SubjectsScraping();
+      final subjectProvider = SubjectProvider();
+      final subjectsScraper = SubjectsScraping(subjectProvider: subjectProvider);
       subjectsScraper.timetableDio.options.headers['Cookie'] = grabbedCookies;
       await subjectsScraper.getSubjectNames();
 
