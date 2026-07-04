@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/database/models/task.dart' as database_model;
 import '../../core/database/repositories/task_repository.dart';
+import '../../widgets/task_widget_service.dart';
 import '../auth/login.dart';
 import 'TasksScraping.dart';
 import 'completion_report_screen.dart';
@@ -22,6 +23,7 @@ class _TasksScreenState extends State<TasksScreen> {
   final TaskRepository _taskRepository = TaskRepository();
   final TaskReportCalculator _taskReportCalculator = TaskReportCalculator();
   final TasksScraping _tasksScraping = TasksScraping();
+  final TaskWidgetService _taskWidgetService = TaskWidgetService();
   final List<TaskMock> _tasks = [];
   bool _isLoading = true;
   bool _isSyncing = false;
@@ -56,6 +58,16 @@ class _TasksScreenState extends State<TasksScreen> {
         ..addAll(visibleTasks.map(_toTaskMock));
       _isLoading = false;
     });
+
+    _syncTaskWidget();
+  }
+
+  Future<void> _syncTaskWidget() async {
+    try {
+      await _taskWidgetService.refresh();
+    } catch (_) {
+      // ウィジェット未配置や権限差異では失敗しても画面操作を止めない。
+    }
   }
 
   TaskMock _toTaskMock(database_model.Task task) {
