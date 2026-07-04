@@ -23,6 +23,61 @@ class ScheduleRepository {
     return maps.map(Schedule.fromMap).toList();
   }
 
+  Future<List<Schedule>> getSchedulesByDate(DateTime date) async {
+    final start = DateTime(date.year, date.month, date.day);
+    final end = start.add(const Duration(days: 1));
+
+    return getSchedulesByDateRange(
+      from: start,
+      to: end,
+    );
+  }
+
+  Future<List<Schedule>> getSchedulesByDateRange({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final maps = await _database.getRows(
+      AppTable.schedules,
+      where: 'date >= ? AND date < ?',
+      whereArgs: [
+        from.toIso8601String(),
+        to.toIso8601String(),
+      ],
+      orderBy: 'date ASC',
+    );
+
+    return maps.map(Schedule.fromMap).toList();
+  }
+
+  Future<List<Schedule>> getSchedulesByGenre(String genre) async {
+    final maps = await _database.getRows(
+      AppTable.schedules,
+      where: 'genre = ?',
+      whereArgs: [genre],
+      orderBy: 'date ASC',
+    );
+
+    return maps.map(Schedule.fromMap).toList();
+  }
+
+  Future<List<Schedule>> getUpcomingSchedules({
+    int limit = 5,
+    DateTime? from,
+  }) async {
+    final maps = await _database.getRows(
+      AppTable.schedules,
+      where: 'date >= ?',
+      whereArgs: [
+        (from ?? DateTime.now()).toIso8601String(),
+      ],
+      orderBy: 'date ASC',
+      limit: limit,
+    );
+
+    return maps.map(Schedule.fromMap).toList();
+  }
+
   Future<Schedule?> getScheduleById(int id) async {
     final map = await _database.getRowById(
       AppTable.schedules,

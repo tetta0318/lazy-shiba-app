@@ -19,13 +19,13 @@ class Subject {
 
   factory Subject.fromMap(Map<String, dynamic> map) {
     return Subject(
-      id: map['id'],
-      subjectName: map['subject_name'],
-      isOnline: map['is_online'] == 1,
-      attendanceCount: map['attendance_count'],
-      totalClassCount: map['total_class_count'],
-      createdAt: DateTime.parse(map['created_at']),
-      updatedAt: DateTime.parse(map['updated_at']),
+      id: _parseNullableInt(map['id']),
+      subjectName: map['subject_name']?.toString() ?? '',
+      isOnline: _parseInt(map['is_online']) == 1,
+      attendanceCount: _parseInt(map['attendance_count']),
+      totalClassCount: _parseInt(map['total_class_count']),
+      createdAt: _parseDateTime(map['created_at']),
+      updatedAt: _parseDateTime(map['updated_at']),
     );
   }
 
@@ -60,4 +60,25 @@ class Subject {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+}
+
+int _parseInt(Object? value, {int fallback = 0}) {
+  if (value is int) {
+    return value;
+  }
+  return int.tryParse(value?.toString() ?? '') ?? fallback;
+}
+
+int? _parseNullableInt(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is int) {
+    return value;
+  }
+  return int.tryParse(value.toString());
+}
+
+DateTime _parseDateTime(Object? value) {
+  return DateTime.tryParse(value?.toString() ?? '') ?? DateTime(1970);
 }

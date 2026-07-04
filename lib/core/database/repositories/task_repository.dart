@@ -10,9 +10,14 @@ class TaskRepository {
 
   //taskオブジェクトをdatabaseに追加
   Future<int> createTask(Task task) async {
+    final values = task.toMap();
+    if (task.id == null) {
+      values.remove('id');
+    }
+
     return _database.insertRow(
       AppTable.tasks,
-      task.toMap()..remove('id'),
+      values,
     );
   }
 
@@ -42,9 +47,7 @@ class TaskRepository {
 
   //科目idからtaskオブジェクトのリストとしてタスクを返す
   Future<List<Task>> getTasksBySubjectId(int subjectId) async {
-    final db = await _database.database;
-
-    final maps = await db.query(
+    final maps = await _database.getRows(
       AppTable.tasks,
       where: 'subject_id = ?',
       whereArgs: [subjectId],
@@ -52,6 +55,48 @@ class TaskRepository {
     );
 
     return maps.map(Task.fromMap).toList();
+  }
+
+  Future<List<Task>> getTasksByStatus(int status) async {
+    final maps = await _database.getRows(
+      AppTable.tasks,
+      where: 'status = ?',
+      whereArgs: [status],
+      orderBy: 'deadline ASC',
+    );
+
+    return maps.map(Task.fromMap).toList();
+  }
+
+  Future<List<Task>> getTasksByDeadlineRange({
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final maps = await _database.getRows(
+      AppTable.tasks,
+      where: 'deadline >= ? AND deadline <= ?',
+      whereArgs: [
+        from.toIso8601String(),
+        to.toIso8601String(),
+      ],
+      orderBy: 'deadline ASC',
+    );
+
+    return maps.map(Task.fromMap).toList();
+  }
+
+  Future<void> upsertTask(Task task) async {
+    if (task.id == null) {
+      throw ArgumentError('同期するTaskにはidが必要です');
+    }
+
+    final existingTask = await getTaskById(task.id!);
+    if (existingTask == null) {
+      await createTask(task);
+      return;
+    }
+
+    await updateTask(task);
   }
 
   //idをもとにタスクを更新
@@ -90,6 +135,20 @@ class TaskRepository {
       AppTable.tasks,
       id,
       {
+        'feeling': feeling,
+      },
+    );
+  }
+
+  Future<int> reportTaskCompletion({
+    required int id,
+    required int feeling,
+  }) async {
+    return _database.updateRow(
+      AppTable.tasks,
+      id,
+      {
+        'status': 1,
         'feeling': feeling,
       },
     );

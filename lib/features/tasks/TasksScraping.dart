@@ -1,101 +1,10 @@
-// // アクセス可能な状態のScombZのHTMLからタスクに必要な情報を取り出すためのコードです。
-
-// import 'package:html/parser.dart' as html_parser;
-// import 'package:dio/dio.dart' as dio;
-// import 'package:html/dom.dart' as html_dom;
-
-// class Assignment{
-//   final int taskId;
-//   final int subjectId;
-//   final String taskName;
-//   final String subjectName;
-//   final String deadline;
-//   final String submissionURL;
-//   final int taskresponse;
-//   final int taskstatus;
-//   Assignment({
-//     required this.taskId,
-//     this.subjectId = 0,
-//     required this.taskName,
-//     required this.subjectName,
-//     required this.deadline,
-//     required this.submissionURL,
-//     this.taskresponse = 0,
-//     this.taskstatus = 0,
-//   });
-// }
-
-// class tasks_scraping{
-
-//   final dio.Dio taskDio = dio.Dio();
-//   List<Assignment> assignmentList = [];
-
-//   Future <void> getTasks() async {
-
-//     dio.Response response;
-//     // HTMLをString型で取得する
-//     try {
-//       response = await taskDio.get('https://scombz.shibaura-it.ac.jp/lms/task');
-//       final String htmlString = response.data.toString();
-//       // 取ってきたStringをdocmentオブジェクトに変換する
-//       html_dom.Document document = html_parser.parse(htmlString);
-//       // タスクの情報を抜き取る
-//       List<html_dom.Element> taskElements = document.querySelectorAll('.result_list_line');
-//       int idCounter = 1;
-//       for(final html_dom.Element row in taskElements){
-//           // --- 科目名の取得 ---
-//         final html_dom.Element? courseElement = row.querySelector('.tasklist-course');
-//         final String subjectName = courseElement?.text.trim() ?? '科目不明';
-
-//         // --- 課題名と提出URLの取得 ---
-//         // 「tasklist-title」クラスの中にある「a」タグをピンポイントで探す
-//         final html_dom.Element? anchor = row.querySelector('.tasklist-title a');
-//         final String taskName = anchor?.text.trim() ?? 'タイトルなし';
-//         final String submissionURL = anchor?.attributes['href'] ?? '';
-
-//         // --- 提出期限の取得 ---
-//         // class="deadline" を持っているspanタグを直接狙い撃ち
-//         final html_dom.Element? deadlineElement = row.querySelector('.deadline');
-//         final String deadline = deadlineElement?.text.trim() ?? '';
-
-//         // クラスに格納
-//         final assignment = Assignment(
-//           taskId: idCounter++,
-//           taskName: taskName,
-//           subjectName: subjectName,
-//           deadline: deadline,
-//           submissionURL: submissionURL,
-//         );
-
-//         assignmentList.add(assignment);
-//         }
-// これ以降の処理はインタフェースが出来上がったらデータベース値を渡すだけに変更
-//         print('\n=========================================');
-//         print('【解析完了】取得件数: \${assignmentList.length} 件');
-//         print('=========================================');
-
-//       for (final assignment in assignmentList) {
-//         print('【ID】     \${assignment.taskId}');
-//         print('【科目名】 \${assignment.subjectName}');
-//         print('【課題名】 \${assignment.taskName}');
-//         print('|__ [締切] \${assignment.deadline}');
-//         print('|__ [URL]  \${assignment.submissionURL}');
-//         print('-----------------------------------------');
-//       }
-//       print('=========================================\n');
-//     } on Exception catch (e) {
-//   // TODO
-//       print('HTMLの取得に失敗しました: $e');
-//     }
-
-//   }
-// }
-
-
-// テスト用の擬似HTMLを用いて、スクレイピングのロジックを完璧に動かすコードです。
 import 'package:html/parser.dart' as html_parser;
 import 'package:dio/dio.dart' as dio;
 import 'package:html/dom.dart' as html_dom;
+
+import '../../core/database/models/task.dart';
+import '../../core/database/repositories/subject_repository.dart';
+import '../../core/database/repositories/task_repository.dart';
 
 class Assignment {
   final int taskId;
@@ -120,6 +29,14 @@ class Assignment {
 }
 
 class TasksScraping {
+  TasksScraping({
+    SubjectRepository? subjectRepository,
+    TaskRepository? taskRepository,
+  })  : _subjectRepository = subjectRepository ?? SubjectRepository(),
+        _taskRepository = taskRepository ?? TaskRepository();
+
+  final SubjectRepository _subjectRepository;
+  final TaskRepository _taskRepository;
   final dio.Dio taskDio = dio.Dio();
   List<Assignment> assignmentList = [];
 
@@ -128,14 +45,11 @@ class TasksScraping {
 
     try {
       print('【通信開始】ScombZの課題一覧ページを取得しています...');
-      // 🚀 実際のScombZサーバーにリクエストを投げる
       final dio.Response response = await taskDio.get('https://scombz.shibaura-it.ac.jp/lms/task');
       final String htmlString = response.data.toString();
 
-      // 取ってきた生のHTMLをDOMオブジェクトにパース
       html_dom.Document document = html_parser.parse(htmlString);
 
-      // タスク行の要素を取得
       List<html_dom.Element> taskElements = document.querySelectorAll('.result_list_line');
       int fallbackIdCounter = 1;
 
@@ -166,7 +80,7 @@ class TasksScraping {
               subjectId = idnumber;
             }
           } catch (_) {
-            // パース失敗時は自動カウンター
+            // パース失敗時
           }
         }
 
@@ -188,6 +102,9 @@ class TasksScraping {
 
       print('🎉 【解析成功】課題数: ${assignmentList.length} 件');
 
+      // 🚀 【新規追加】解析したデータをSQLiteデータベースに登録/同期する
+      await _saveTasksToDatabase();
+
     } on dio.DioException catch (e) {
       print('❌ 課題一覧のHTTP通信に失敗しました: ${e.message}');
       rethrow;
@@ -195,5 +112,67 @@ class TasksScraping {
       print('❌ 課題一覧のパース処理中にエラーが発生しました: $e');
       rethrow;
     }
+  }
+
+  /// 🚀 課題リストをSQLiteデータベースに保存・同期する内部メソッド
+  Future<void> _saveTasksToDatabase() async {
+    print('💾 データベースへの同期を開始します...');
+
+    for (final assignment in assignmentList) {
+      final subjectId = await _subjectRepository.findOrCreateSubject(
+        subjectName: assignment.subjectName,
+      );
+      final existingTask = await _taskRepository.getTaskById(assignment.taskId);
+      final now = DateTime.now();
+      final task = Task(
+        id: assignment.taskId,
+        subjectId: subjectId,
+        taskName: assignment.taskName,
+        deadline: _parseDeadline(assignment.deadline),
+        url: assignment.submissionURL.isEmpty ? null : assignment.submissionURL,
+        feeling: assignment.taskresponse,
+        status: assignment.taskstatus,
+        createdAt: existingTask?.createdAt ?? now,
+        updatedAt: now,
+      );
+
+      if (existingTask == null) {
+        await _taskRepository.createTask(task);
+        print(' ➕ 新規課題を登録しました: ${assignment.taskName}');
+      } else {
+        await _taskRepository.updateTask(task);
+        print(' 🔄 既存の課題を更新しました: ${assignment.taskName}');
+      }
+    }
+    print('✨ すべての課題データの同期が完了しました！');
+  }
+
+  DateTime _parseDeadline(String deadline) {
+    final normalized = deadline
+        .replaceAll('年', '-')
+        .replaceAll('月', '-')
+        .replaceAll('日', ' ')
+        .replaceAll('/', '-')
+        .trim();
+
+    final parsed = DateTime.tryParse(normalized);
+    if (parsed != null) {
+      return parsed;
+    }
+
+    final match = RegExp(
+      r'(\d{4})[-/年](\d{1,2})[-/月](\d{1,2})(?:[日\s]+(\d{1,2}):(\d{1,2}))?',
+    ).firstMatch(deadline);
+
+    if (match != null) {
+      final year = int.parse(match.group(1)!);
+      final month = int.parse(match.group(2)!);
+      final day = int.parse(match.group(3)!);
+      final hour = int.tryParse(match.group(4) ?? '') ?? 23;
+      final minute = int.tryParse(match.group(5) ?? '') ?? 59;
+      return DateTime(year, month, day, hour, minute);
+    }
+
+    return DateTime.now();
   }
 }

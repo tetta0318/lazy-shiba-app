@@ -17,12 +17,12 @@ class Schedule {
 
   factory Schedule.fromMap(Map<String, dynamic> map) {
     return Schedule(
-      id: map['id'],
-      date: DateTime.parse(map['date']),
-      title: map['title'],
-      genre: map['genre'],
-      createdAt: DateTime.parse(map['created_at']),
-      updatedAt: DateTime.parse(map['updated_at']),
+      id: _parseNullableInt(map['id']),
+      date: _parseDateTime(map['date']),
+      title: map['title']?.toString() ?? '',
+      genre: map['genre']?.toString() ?? '',
+      createdAt: _parseDateTime(map['created_at']),
+      updatedAt: _parseDateTime(map['updated_at']),
     );
   }
 
@@ -54,4 +54,18 @@ class Schedule {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
+}
+
+int? _parseNullableInt(Object? value) {
+  if (value == null) {
+    return null;
+  }
+  if (value is int) {
+    return value;
+  }
+  return int.tryParse(value.toString());
+}
+
+DateTime _parseDateTime(Object? value) {
+  return DateTime.tryParse(value?.toString() ?? '') ?? DateTime(1970);
 }

@@ -201,31 +201,6 @@ class _GradesPageState extends State<GradesPage> {
           ],
         ),
       ),
-
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1,
-        selectedItemColor: Colors.red,
-        unselectedItemColor: Colors.grey,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.assignment),
-            label: '課題',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.school),
-            label: '成績',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'ホーム',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.event),
-            label: '予定',
-          ),
-        ],
-      ),
     );
   }
 }
