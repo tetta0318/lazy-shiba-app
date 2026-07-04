@@ -14,30 +14,32 @@ class MainLayoutScreen extends StatefulWidget {
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
   int _selectedIndex = 0;
 
-  // 表示する画面のリスト
-  final List<Widget> _screens = const [
-    HomeScreen(),     // 0
-    TasksScreen(),    // 1
-    GradesPage(),     // 2
-    ScheduleScreen(), // 3
-  ];
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    // 表示する画面のリスト
+    final List<Widget> screens = [
+      HomeScreen(onNavigateToTab: _onItemTapped), // 0
+      const TasksScreen(),    // 1
+      const GradesPage(),     // 2
+      const ScheduleScreen(), // 3
+    ];
+
     return Scaffold(
       // IndexedStackを使うと、画面を切り替えても各タブの状態（スクロール位置や入力内容）が保持されます
       body: IndexedStack(
         index: _selectedIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         type: BottomNavigationBarType.fixed,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onTap: _onItemTapped,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'ホーム'),
           BottomNavigationBarItem(icon: Icon(Icons.assignment), label: '課題'),

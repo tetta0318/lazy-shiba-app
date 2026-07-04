@@ -7,7 +7,11 @@ import '../../core/database/repositories/task_repository.dart';
 import '../sync/portal_sync_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.onNavigateToTab});
+
+  /// ボトムナビゲーションのタブを切り替えるためのコールバック。
+  /// 課題タブ = 1, 成績タブ = 2, 予定タブ = 3
+  final void Function(int index)? onNavigateToTab;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -59,91 +63,126 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionTitle('全体の成績'),
-              Card(
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: const [
-                      Column(
-                        children: [
-                          Text(
-                            '現在のGPA',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '3.25',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
+              InkWell(
+                onTap: () => widget.onNavigateToTab?.call(2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle('全体の成績'),
+                    Card(
+                      elevation: 2,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: const [
+                            Column(
+                              children: [
+                                Text(
+                                  '現在のGPA',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  '3.25',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          Text(
-                            '全体の成績',
-                            style: TextStyle(fontSize: 14, color: Colors.grey),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            '35%',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
+                            Column(
+                              children: [
+                                Text(
+                                  '全体の成績',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                SizedBox(height: 8),
+                                Text(
+                                  '35%',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildSectionTitle('一番近い休校日・予定'),
-              Card(
-                elevation: 2,
-                color: Colors.orange.shade50,
-                child: ListTile(
-                  leading: const Icon(Icons.calendar_month, color: Colors.orange),
-                  title: Text(
-                    upcomingSchedule?.title ?? '予定はありません',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    upcomingSchedule == null
-                        ? '直近の予定は未登録です'
-                        : _formatDaysUntil(upcomingSchedule.date),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              _buildSectionTitle('直近の未完了課題'),
-              Card(
-                elevation: 2,
-                child: incompleteTasks.isEmpty
-                    ? const ListTile(title: Text('未完了課題はありません。'))
-                    : Column(
-                        children: [
-                          for (final task in incompleteTasks) ...[
-                            ListTile(
-                              leading: const Icon(
-                                Icons.assignment,
-                                color: Colors.red,
-                              ),
-                              title: Text(task.taskName),
-                              subtitle: Text(_formatDaysUntil(task.deadline)),
-                            ),
-                            if (task != incompleteTasks.last)
-                              const Divider(height: 1),
                           ],
-                        ],
+                        ),
                       ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              InkWell(
+                onTap: () => widget.onNavigateToTab?.call(3),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle('一番近い休校日・予定'),
+                    Card(
+                      elevation: 2,
+                      color: Colors.orange.shade50,
+                      child: ListTile(
+                        leading: const Icon(
+                          Icons.calendar_month,
+                          color: Colors.orange,
+                        ),
+                        title: Text(
+                          upcomingSchedule?.title ?? '予定はありません',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          upcomingSchedule == null
+                              ? '直近の予定は未登録です'
+                              : _formatDaysUntil(upcomingSchedule.date),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              InkWell(
+                onTap: () => widget.onNavigateToTab?.call(1),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle('直近の未完了課題'),
+                    Card(
+                      elevation: 2,
+                      child: incompleteTasks.isEmpty
+                          ? const ListTile(title: Text('未完了課題はありません。'))
+                          : Column(
+                              children: [
+                                for (final task in incompleteTasks) ...[
+                                  ListTile(
+                                    leading: const Icon(
+                                      Icons.assignment,
+                                      color: Colors.red,
+                                    ),
+                                    title: Text(task.taskName),
+                                    subtitle: Text(
+                                      _formatDaysUntil(task.deadline),
+                                    ),
+                                  ),
+                                  if (task != incompleteTasks.last)
+                                    const Divider(height: 1),
+                                ],
+                              ],
+                            ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 24),
               SizedBox(
