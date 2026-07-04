@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -50,10 +52,14 @@ class _LoginWebviewPageState extends State<LoginWebviewPage> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onPageStarted: (String url) {
-            setState(() => _isLoading = true);
+            if (mounted) {
+              setState(() => _isLoading = true);
+            }
           },
           onPageFinished: (String url) async {
-            setState(() => _isLoading = false);
+            if (mounted) {
+              setState(() => _isLoading = false);
+            }
 
             print('【ページ読込完了】: $url');
 
@@ -83,6 +89,8 @@ class _LoginWebviewPageState extends State<LoginWebviewPage> {
               final String formattedId = rawId.contains('@') 
                   ? rawId 
                   : '$rawId@sic.shibaura-it.ac.jp';
+              final encodedId = jsonEncode(formattedId);
+              final encodedPassword = jsonEncode(widget.password);
 
               await _controller.runJavaScript('''
                 (function() {
@@ -92,8 +100,8 @@ class _LoginWebviewPageState extends State<LoginWebviewPage> {
 
                   if (idField && pwField) {
                     // 🌟整形したID（メールアドレス形式）を入力欄にセット
-                    idField.value = '$formattedId';
-                    pwField.value = '${widget.password}';
+                    idField.value = $encodedId;
+                    pwField.value = $encodedPassword;
                     
                     if (submitButton) {
                       if (typeof Login !== 'undefined' && Login.submitLoginRequest) {

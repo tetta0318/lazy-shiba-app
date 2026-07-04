@@ -6,6 +6,7 @@ class Task {
   final String? url;
   final int feeling;
   final int status;
+  final DateTime? completedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -17,6 +18,7 @@ class Task {
     required this.url,
     required this.feeling,
     required this.status,
+    this.completedAt,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -30,6 +32,7 @@ class Task {
       url: map['url']?.toString(),
       feeling: _parseInt(map['feeling']),
       status: _parseInt(map['status']),
+      completedAt: _parseNullableDateTime(map['completed_at']),
       createdAt: _parseDateTime(map['created_at']),
       updatedAt: _parseDateTime(map['updated_at']),
     );
@@ -44,6 +47,7 @@ class Task {
       'url': url,
       'feeling': feeling,
       'status': status,
+      'completed_at': completedAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -57,6 +61,7 @@ class Task {
     String? url,
     int? feeling,
     int? status,
+    DateTime? completedAt,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -68,6 +73,7 @@ class Task {
       url: url ?? this.url,
       feeling: feeling ?? this.feeling,
       status: status ?? this.status,
+      completedAt: completedAt ?? this.completedAt,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -89,6 +95,13 @@ int? _parseNullableInt(Object? value) {
     return value;
   }
   return int.tryParse(value.toString());
+}
+
+DateTime? _parseNullableDateTime(Object? value) {
+  if (value == null || value.toString().isEmpty) {
+    return null;
+  }
+  return _parseDateTime(value);
 }
 
 DateTime _parseDateTime(Object? value) {

@@ -74,6 +74,7 @@ class AppDatabase {
         url TEXT,
         feeling INTEGER NOT NULL,
         status INTEGER NOT NULL,
+        completed_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(subject_id)
@@ -114,6 +115,7 @@ class AppDatabase {
         'url': 'TEXT',
         'feeling': 'INTEGER NOT NULL DEFAULT 0',
         'status': 'INTEGER NOT NULL DEFAULT 0',
+        'completed_at': 'TEXT',
         'created_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
         'updated_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
       },
@@ -172,6 +174,7 @@ class AppDatabase {
         url TEXT,
         feeling INTEGER NOT NULL,
         status INTEGER NOT NULL,
+        completed_at TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
         FOREIGN KEY(subject_id)
@@ -189,6 +192,7 @@ class AppDatabase {
         url,
         feeling,
         status,
+        completed_at,
         created_at,
         updated_at
       )
@@ -211,6 +215,7 @@ class AppDatabase {
         NULLIF(${_legacyColumn(legacyColumns, 'url')}, ''),
         COALESCE(CAST(${_legacyColumn(legacyColumns, 'feeling', fallback: '0')} AS INTEGER), 0),
         COALESCE(CAST(${_legacyColumn(legacyColumns, 'status', fallback: '0')} AS INTEGER), 0),
+        NULLIF(${_legacyColumn(legacyColumns, 'completed_at')}, ''),
         COALESCE(
           NULLIF(${_legacyColumn(legacyColumns, 'created_at')}, ''),
           '1970-01-01T00:00:00.000'

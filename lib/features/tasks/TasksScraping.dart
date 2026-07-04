@@ -1,10 +1,21 @@
 import 'package:html/parser.dart' as html_parser;
 import 'package:dio/dio.dart' as dio;
 import 'package:html/dom.dart' as html_dom;
+import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../core/database/models/task.dart';
 import '../../core/database/repositories/subject_repository.dart';
 import '../../core/database/repositories/task_repository.dart';
+
+/// ScombZのセッションCookieが取得できず、再同期できない場合にスローされる
+class SessionExpiredException implements Exception {
+  final String message;
+
+  SessionExpiredException([this.message = 'セッションが切れました。再度ログインしてください。']);
+
+  @override
+  String toString() => message;
+}
 
 class Assignment {
   final int taskId;
@@ -35,10 +46,30 @@ class TasksScraping {
   })  : _subjectRepository = subjectRepository ?? SubjectRepository(),
         _taskRepository = taskRepository ?? TaskRepository();
 
+  static const String _scombzDomain = 'https://scombz.shibaura-it.ac.jp';
+
   final SubjectRepository _subjectRepository;
   final TaskRepository _taskRepository;
   final dio.Dio taskDio = dio.Dio();
   List<Assignment> assignmentList = [];
+
+  /// 更新ボタン等から呼び出す再同期処理。
+  /// WebViewが保持しているScombZのセッションCookieを取得し、
+  /// 課題一覧を再スクレイピングしてDBに同期する。
+  Future<void> syncWithScombz() async {
+    final cookies = await WebViewCookieManager().getCookies(
+      domain: Uri.parse(_scombzDomain),
+    );
+
+    if (cookies.isEmpty) {
+      throw SessionExpiredException();
+    }
+
+    final cookieString = cookies.map((c) => '${c.name}=${c.value}').join('; ');
+    taskDio.options.headers['Cookie'] = cookieString;
+
+    await getTasks();
+  }
 
   Future<void> getTasks() async {
     assignmentList.clear();
@@ -130,8 +161,10 @@ class TasksScraping {
         taskName: assignment.taskName,
         deadline: _parseDeadline(assignment.deadline),
         url: assignment.submissionURL.isEmpty ? null : assignment.submissionURL,
-        feeling: assignment.taskresponse,
-        status: assignment.taskstatus,
+        // 完了状態・手応え・完了日時はScombZ側に存在しないため、既存のユーザー入力を保持する
+        feeling: existingTask?.feeling ?? assignment.taskresponse,
+        status: existingTask?.status ?? assignment.taskstatus,
+        completedAt: existingTask?.completedAt,
         createdAt: existingTask?.createdAt ?? now,
         updatedAt: now,
       );
