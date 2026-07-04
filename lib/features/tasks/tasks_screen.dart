@@ -1,10 +1,13 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/database/models/task.dart' as database_model;
 import '../../core/database/repositories/task_repository.dart';
+import '../auth/login.dart';
+import 'TasksScraping.dart';
 import 'completion_report_screen.dart';
-import 'priority_setting_screen.dart';
 import 'task_model.dart';
+import 'task_report_calculator.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
@@ -14,9 +17,14 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
+  static const _hideCompletedAfter = Duration(days: 7);
+
   final TaskRepository _taskRepository = TaskRepository();
+  final TaskReportCalculator _taskReportCalculator = TaskReportCalculator();
+  final TasksScraping _tasksScraping = TasksScraping();
   final List<TaskMock> _tasks = [];
   bool _isLoading = true;
+  bool _isSyncing = false;
 
   @override
   void initState() {
@@ -30,10 +38,22 @@ class _TasksScreenState extends State<TasksScreen> {
       return;
     }
 
+    final now = DateTime.now();
+    final visibleTasks = tasks.where((task) {
+      if (task.status == 0) {
+        return true;
+      }
+      final completedAt = task.completedAt;
+      if (completedAt == null) {
+        return true;
+      }
+      return now.difference(completedAt) < _hideCompletedAfter;
+    });
+
     setState(() {
       _tasks
         ..clear()
-        ..addAll(tasks.map(_toTaskMock));
+        ..addAll(visibleTasks.map(_toTaskMock));
       _isLoading = false;
     });
   }
@@ -45,6 +65,78 @@ class _TasksScreenState extends State<TasksScreen> {
       deadline: _formatDeadline(task.deadline),
       complete: task.status != 0,
     );
+  }
+
+  Future<void> _onRefreshPressed() async {
+    setState(() {
+      _isSyncing = true;
+    });
+
+    try {
+      await _tasksScraping.syncWithScombz();
+    } on SessionExpiredException {
+      if (!mounted) return;
+      await _showErrorDialog('セッションが切れました。再度ログインしてください。');
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+      return;
+    } on DioException {
+      if (!mounted) return;
+      await _showErrorDialog('通信に失敗しました。ネットワーク接続を確認してください。');
+    } catch (_) {
+      if (!mounted) return;
+      await _showErrorDialog('課題の取得に失敗しました。');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSyncing = false;
+        });
+      }
+    }
+
+    await _loadTasks();
+  }
+
+  Future<void> _showErrorDialog(String message) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _onCheckTapped(TaskMock task) async {
+    final taskId = int.tryParse(task.id);
+    if (taskId == null) {
+      return;
+    }
+
+    if (task.complete) {
+      await _taskReportCalculator.revertCompletion(taskId: taskId);
+      _loadTasks();
+      return;
+    }
+
+    final reported = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => CompletionReportScreen(taskId: taskId),
+      ),
+    );
+
+    if (reported == true) {
+      _loadTasks();
+    }
   }
 
   String _formatDeadline(DateTime deadline) {
@@ -80,111 +172,64 @@ class _TasksScreenState extends State<TasksScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadTasks,
+            icon: _isSyncing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.refresh),
+            onPressed: _isSyncing ? null : _onRefreshPressed,
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size.fromHeight(45),
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => PrioritySettingScreen(tasks: _tasks),
-                  ),
-                ).then((updatedList) {
-                  if (updatedList != null) {
-                    setState(() {
-                      _tasks
-                        ..clear()
-                        ..addAll(updatedList);
-                    });
-                  }
-                });
-              },
-              child: const Text(
-                '優先度の変更',
-                style: TextStyle(fontSize: 14),
-              ),
-            ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _tasks.isEmpty
-                    ? const Center(child: Text('課題はありません。'))
-                    : ListView.builder(
-                        itemCount: _tasks.length,
-                        itemBuilder: (context, index) {
-                          final task = _tasks[index];
-                          return Card(
-                            color: task.complete
-                                ? Colors.grey.shade200
-                                : Colors.white,
-                            margin: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            child: ListTile(
-                              leading: task.complete
-                                  ? const Icon(
-                                      Icons.check_circle,
-                                      color: Colors.green,
-                                    )
-                                  : const Icon(Icons.circle_outlined),
-                              title: Text(
-                                '${index + 1}. ${task.name}',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  decoration: task.complete
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  color:
-                                      task.complete ? Colors.grey : Colors.black,
-                                ),
-                              ),
-                              trailing: task.complete
-                                  ? ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 4,
-                                        ),
-                                        minimumSize: Size.zero,
-                                      ),
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                const CompletionReportScreen(),
-                                          ),
-                                        );
-                                      },
-                                      child: const Text(
-                                        '完了報告する',
-                                        style: TextStyle(fontSize: 12),
-                                      ),
-                                    )
-                                  : Text(
-                                      task.deadline,
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                            ),
-                          );
-                        },
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _tasks.isEmpty
+              ? const Center(child: Text('課題はありません。'))
+              : ListView.builder(
+                  itemCount: _tasks.length,
+                  itemBuilder: (context, index) {
+                    final task = _tasks[index];
+                    return Card(
+                      color: task.complete
+                          ? Colors.grey.shade200
+                          : Colors.white,
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
                       ),
-          ),
-        ],
-      ),
+                      child: ListTile(
+                        leading: GestureDetector(
+                          onTap: () => _onCheckTapped(task),
+                          child: task.complete
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                )
+                              : const Icon(Icons.circle_outlined),
+                        ),
+                        title: Text(
+                          '${index + 1}. ${task.name}',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            decoration: task.complete
+                                ? TextDecoration.lineThrough
+                                : null,
+                            color: task.complete ? Colors.grey : Colors.black,
+                          ),
+                        ),
+                        trailing: task.complete
+                            ? null
+                            : Text(
+                                task.deadline,
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }

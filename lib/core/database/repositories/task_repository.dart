@@ -150,6 +150,21 @@ class TaskRepository {
       {
         'status': 1,
         'feeling': feeling,
+        'completed_at': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
+  //完了報告を取り消し、未完了状態に戻す
+  Future<int> revertTaskCompletion({
+    required int id,
+  }) async {
+    return _database.updateRow(
+      AppTable.tasks,
+      id,
+      {
+        'status': 0,
+        'completed_at': null,
       },
     );
   }
