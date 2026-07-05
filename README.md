@@ -1,6 +1,14 @@
 # lazy_shiba_app
 
-A new Flutter project.
+大学ポータルの情報をスクレイピングして取り込み、課題・成績・予定をまとめて管理できる Flutter アプリです。
+
+## 主な機能
+* 大学ポータルへのログイン・認証 (`features/auth`)
+* 課題の取得・管理・完了報告 (`features/tasks`)
+* 成績・GPA の確認と目標管理 (`features/grades`)
+* 履修スケジュールの表示 (`features/schedule`)
+* ホーム画面ウィジェットとの連携 (`features/widgets`, Android の `TaskWidgetProvider`)
+* SQLite (`sqflite`) によるローカルデータ永続化と `flutter_riverpod` による状態管理
 
 ## Getting Started
 
@@ -16,6 +24,30 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
+## セットアップ
+
+```bash
+# 依存パッケージの取得
+flutter pub get
+
+# アプリの起動 (端末/エミュレータを接続した状態で実行)
+flutter run
+```
+
+このリポジトリは `.fvmrc` で Flutter バージョンを固定しています。[FVM](https://fvm.app/) を利用している場合は次のように実行してください。
+
+```bash
+fvm install
+fvm flutter pub get
+fvm flutter run
+```
+
+## テスト・静的解析
+
+```bash
+flutter analyze
+flutter test
+```
 
 # Version
 * Flutter: 3.44.0
@@ -33,4 +65,13 @@ samples, guidance on mobile development, and a full API reference.
 * features/schedule 予定管理
 * features/widgets ホーム画面やウィジェット関連
 * shared 共通UIやテーマ
+
+# 主な使用パッケージ
+* flutter_riverpod: 状態管理
+* sqflite: ローカルDB (SQLite)
+* dio: HTTP通信
+* html: 大学ポータルのスクレイピング (HTML解析)
+* webview_flutter: ポータルログイン用WebView
+* shared_preferences: 簡易データ保存
+* home_widget: ホーム画面ウィジェット連携
 
