@@ -9,6 +9,8 @@ class SeedData {
     await _seedSubjects(db);
     await _seedTasks(db);
     await _seedSchedules(db);
+
+    
   }
 
   static Future<void> _seedSubjects(dynamic db) async {

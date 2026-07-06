@@ -1,6 +1,462 @@
 import 'package:flutter/material.dart';
 
-class ScheduleScreen extends StatelessWidget {
+import '../../core/database/repositories/schedule_repository.dart';
+import '../../core/database/models/schedule.dart';
+
+class ScheduleScreen extends StatefulWidget {
+
+  const ScheduleScreen({
+    super.key,
+  });
+
+
+  @override
+  State<ScheduleScreen> createState() =>
+      _ScheduleScreenState();
+}
+
+
+class _ScheduleScreenState
+    extends State<ScheduleScreen> {
+
+
+  final ScheduleRepository _repository =
+      ScheduleRepository();
+
+
+  List<Schedule> _schedules = [];
+
+
+  bool _isLoading = true;
+
+
+
+  @override
+  void initState() {
+    super.initState();
+
+    _loadSchedules();
+  }
+
+
+
+  Future<void> _loadSchedules() async {
+
+    try {
+
+      final schedules =
+          await _repository.getSchedules();
+
+
+      if (!mounted) return;
+
+
+      setState(() {
+
+        _schedules = schedules;
+
+        _isLoading = false;
+
+      });
+
+
+    } catch(e) {
+
+      if (!mounted) return;
+
+
+      setState(() {
+
+        _isLoading = false;
+
+      });
+
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(
+        const SnackBar(
+          content: Text(
+            '予定の取得に失敗しました',
+          ),
+        ),
+      );
+
+    }
+
+  }
+
+
+
+  @override
+  Widget build(BuildContext context) {
+
+
+    return Scaffold(
+
+      appBar: AppBar(
+
+        title: const Text(
+          '予定',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+
+        centerTitle: true,
+
+      ),
+
+
+
+      body: _isLoading
+
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+
+
+          : ListView(
+
+              padding:
+                  const EdgeInsets.all(16),
+
+
+              children: [
+
+
+
+                _buildSectionTitle(
+                  '直近の予定',
+                ),
+
+
+
+                Card(
+
+                  elevation: 2,
+
+
+                  child: _schedules.isEmpty
+
+                      ? const Padding(
+                          padding:
+                              EdgeInsets.all(16),
+
+                          child: Text(
+                            '予定がありません',
+                          ),
+                        )
+
+
+                      : Column(
+
+                          children:
+
+                              _schedules
+                                  .map(
+                                    (schedule) {
+
+                                      return Column(
+
+                                        children: [
+
+                                          _buildScheduleRow(
+                                            schedule,
+                                          ),
+
+
+                                          if(schedule !=
+                                              _schedules.last)
+
+                                            const Divider(
+                                              height: 1,
+                                            ),
+
+                                        ],
+
+                                      );
+
+                                    },
+                                  )
+                                  .toList(),
+
+                        ),
+
+                ),
+
+
+
+                const SizedBox(
+                  height: 24,
+                ),
+
+
+
+
+                _buildSectionTitle(
+                  '一番近い休校日',
+                ),
+
+
+
+                Card(
+
+                  elevation: 2,
+
+                  color:
+                      Colors.red.shade50,
+
+
+                  child: const ListTile(
+
+                    leading:
+                        Icon(
+                          Icons.event_busy,
+                          color: Colors.red,
+                        ),
+
+
+                    title:
+                        Text(
+                          '休校日データなし',
+                          style:
+                              TextStyle(
+                                fontWeight:
+                                    FontWeight.bold,
+                              ),
+                        ),
+
+
+                    subtitle:
+                        Text(
+                          '今後ScombZ同期予定',
+                        ),
+
+                  ),
+
+                ),
+
+
+
+
+                const SizedBox(
+                  height: 24,
+                ),
+
+
+
+
+                _buildSectionTitle(
+                  '直近のテストまでの日数',
+                ),
+
+
+
+                Card(
+
+                  elevation: 2,
+
+                  color:
+                      Colors.orange.shade50,
+
+
+                  child: const ListTile(
+
+                    leading:
+                        Icon(
+                          Icons.timer,
+                          color:
+                              Colors.orange,
+                        ),
+
+
+                    title:
+                        Text(
+                          'テスト情報なし',
+                          style:
+                              TextStyle(
+                                fontWeight:
+                                    FontWeight.bold,
+                              ),
+                        ),
+
+
+                    trailing:
+                        Text(
+                          '-',
+                          style:
+                              TextStyle(
+                                fontSize: 20,
+                                fontWeight:
+                                    FontWeight.bold,
+                              ),
+                        ),
+
+                  ),
+
+                ),
+
+
+              ],
+
+            ),
+
+    );
+
+  }
+
+
+
+
+
+  Widget _buildSectionTitle(
+      String title) {
+
+
+    return Padding(
+
+      padding:
+          const EdgeInsets.only(
+            left: 4,
+            bottom: 8,
+          ),
+
+
+      child: Text(
+
+        title,
+
+        style:
+            const TextStyle(
+
+              fontSize: 16,
+
+              fontWeight:
+                  FontWeight.bold,
+
+            ),
+
+      ),
+
+    );
+
+  }
+
+
+
+
+
+
+
+  Widget _buildScheduleRow(
+      Schedule schedule) {
+
+
+    return Padding(
+
+      padding:
+          const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
+
+
+      child: Row(
+
+        children: [
+
+
+          SizedBox(
+
+            width: 100,
+
+
+            child: Text(
+
+              '${schedule.date.month}/${schedule.date.day}',
+
+
+              style:
+                  const TextStyle(
+
+                    fontWeight:
+                        FontWeight.bold,
+
+
+                    color:
+                        Colors.blueGrey,
+
+                  ),
+
+            ),
+
+          ),
+
+
+
+          Expanded(
+
+            child: Column(
+
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
+
+
+              children: [
+
+
+                Text(
+
+                  schedule.title,
+
+                  style:
+                      const TextStyle(
+
+                        fontSize: 15,
+
+                      ),
+
+                ),
+
+
+
+                Text(
+
+                  schedule.genre,
+
+
+                  style:
+                      const TextStyle(
+
+                        fontSize: 12,
+
+                        color:
+                            Colors.grey,
+
+                      ),
+
+                ),
+
+
+              ],
+
+            ),
+
+          ),
+
+
+        ],
+
+      ),
+
+    );
+
+  }
+
+}
+
+/*class ScheduleScreen extends StatelessWidget {
   const ScheduleScreen({super.key});
 
   @override
@@ -96,4 +552,5 @@ class ScheduleScreen extends StatelessWidget {
       ),
     );
   }
-}
+}*/
+

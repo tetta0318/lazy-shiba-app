@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'core/database/seed_data.dart';
 
 import 'features/auth/login.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SeedData.insertIfEmpty();
   runApp(
     const ProviderScope(
       child: MyApp(),
