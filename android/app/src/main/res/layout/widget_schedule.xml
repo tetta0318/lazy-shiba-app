@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/widget_schedule_header"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#3B6FE0"
+        android:padding="8dp"
+        android:text="予定"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:textSize="14sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:padding="10dp">
+
+        <TextView
+            android:id="@+id/widget_schedule_tomorrow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="明日　ガイダンス"
+            android:textColor="#333333"
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="－"
+            android:textColor="#999999"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/widget_schedule_week"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1週間　○○提出期限"
+            android:textColor="#333333"
+            android:textSize="13sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="－"
+            android:textColor="#999999"
+            android:textSize="12sp" />
+
+        <TextView
+            android:id="@+id/widget_schedule_month"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1か月　○○中間テスト"
+            android:textColor="#333333"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/widget_schedule_holiday"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="#FDECEA"
+            android:padding="6dp"
+            android:text="一番近い休校日"
+            android:textColor="#D9534F"
+            android:textSize="12sp" />
+    </LinearLayout>
+
+</LinearLayout>
