@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'model/subject_data.dart';
+import 'subject_db_access.dart';
 import 'subject_goal_page.dart';
 
 class SubjectDetailPage extends StatefulWidget {
@@ -18,13 +19,34 @@ class SubjectDetailPage extends StatefulWidget {
 
 class _SubjectDetailPageState
     extends State<SubjectDetailPage> {
+  final SubjectDbAccess _subjectDbAccess = SubjectDbAccess();
+  double _attendanceRate = 0;
+  bool _isLoadingAttendance = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAttendanceRate();
+  }
+
+  Future<void> _loadAttendanceRate() async {
+    final rate =
+        await _subjectDbAccess.getAttendanceRate(widget.subjectName);
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _attendanceRate = rate;
+      _isLoadingAttendance = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
 
-    final subject =
-        SubjectStore.subjects[
-            widget.subjectName]!;
+    // 課題成績予想・全体の成績はまだDBに保存先が無いため、
+    // 引き続きインメモリのダミーデータ(SubjectStore)を使う。
+    final subject = SubjectStore.getOrCreate(widget.subjectName);
 
     return Scaffold(
       appBar: AppBar(
@@ -62,24 +84,26 @@ class _SubjectDetailPageState
 
             const SizedBox(height: 10),
 
-            LinearProgressIndicator(
-              value:
-                  subject.attendanceRate /
-                      100,
-              minHeight: 20,
-            ),
-
-            const SizedBox(height: 10),
-
-            Text(
-              '出席率 '
-              '${subject.attendanceRate.toStringAsFixed(0)}%',
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily:
-                    'sans-serif-cjk',
+            if (_isLoadingAttendance)
+              const LinearProgressIndicator(minHeight: 20)
+            else ...[
+              LinearProgressIndicator(
+                value: _attendanceRate / 100,
+                minHeight: 20,
               ),
-            ),
+
+              const SizedBox(height: 10),
+
+              Text(
+                '出席率 '
+                '${_attendanceRate.toStringAsFixed(0)}%',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontFamily:
+                      'sans-serif-cjk',
+                ),
+              ),
+            ],
 
             const SizedBox(height: 30),
 
