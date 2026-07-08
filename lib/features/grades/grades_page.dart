@@ -46,9 +46,17 @@ class _GradesPageState extends State<GradesPage> {
     });
   }
 
+  // periodCountが2以上の科目（2コマ連続授業）は、開始コマだけでなく
+  // 占有する全コマにマッチさせる。同じコマにQ1科目・Q2科目が両方
+  // 登録されていることがあるため、その場合は両方とも返す
+  // （呼び出し側で上下に分けて表示する）。
   List<Subject> _subjectsAt({required int dayOfWeek, required int period}) {
     return _subjects
-        .where((s) => s.dayOfWeek == dayOfWeek && s.period == period)
+        .where((s) =>
+            s.dayOfWeek == dayOfWeek &&
+            s.period != null &&
+            period >= s.period! &&
+            period < s.period! + s.periodCount)
         .toList();
   }
 
@@ -63,21 +71,49 @@ class _GradesPageState extends State<GradesPage> {
     return time != null ? '$period限\n$time' : '$period限';
   }
 
-  Widget _timetableCell(BuildContext context, List<Subject> subjects) {
+  // 1コマに複数科目（Q1科目・Q2科目など）がある場合は上下に分けて表示する。
+  // Table自体には高さを揃える仕組みを持たせず、行の高さを事前に計算して
+  // 全セルに明示的に渡すことで、列ごとに高さがズレる崩れを防ぐ。
+  Widget _timetableCell(
+    BuildContext context,
+    List<Subject> subjects,
+    double height,
+  ) {
     if (subjects.isEmpty) {
-      return emptyCell();
-    }
-    if (subjects.length == 1) {
-      return subjectButton(context, subjects.first.subjectName);
+      return emptyCell(height: height);
     }
     return Container(
+      height: height,
       color: const Color(0xFFD7DCDC),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: subjects
-            .map((s) => subjectButton(context, s.subjectName))
-            .toList(),
+        children: [
+          for (final subject in subjects)
+            Expanded(child: subjectButton(context, subject.subjectName)),
+        ],
       ),
+    );
+  }
+
+  TableRow _buildPeriodRow(BuildContext context, int period) {
+    final subjectsByDay = {
+      for (final day in _weekdays)
+        day: _subjectsAt(dayOfWeek: day, period: period),
+    };
+
+    var maxSubjectsInRow = 1;
+    for (final subjects in subjectsByDay.values) {
+      if (subjects.length > maxSubjectsInRow) {
+        maxSubjectsInRow = subjects.length;
+      }
+    }
+    final rowHeight = 90.0 * maxSubjectsInRow;
+
+    return TableRow(
+      children: [
+        periodCell(_periodLabel(period), height: rowHeight),
+        for (final day in _weekdays)
+          _timetableCell(context, subjectsByDay[day]!, rowHeight),
+      ],
     );
   }
 
@@ -163,17 +199,7 @@ class _GradesPageState extends State<GradesPage> {
                       HeaderCell(_weekdayLabels[day]!),
                   ],
                 ),
-                for (final period in periods)
-                  TableRow(
-                    children: [
-                      periodCell(_periodLabel(period)),
-                      for (final day in _weekdays)
-                        _timetableCell(
-                          context,
-                          _subjectsAt(dayOfWeek: day, period: period),
-                        ),
-                    ],
-                  ),
+                for (final period in periods) _buildPeriodRow(context, period),
               ],
             ),
 
@@ -274,9 +300,9 @@ class HeaderCell extends StatelessWidget {
   }
 }
 
-Widget periodCell(String text) {
+Widget periodCell(String text, {double height = 90}) {
   return Container(
-    height: 90,
+    height: height,
     color: const Color(0xFFE6A39B),
     child: Center(
       child: Text(
@@ -291,9 +317,9 @@ Widget periodCell(String text) {
   );
 }
 
-Widget emptyCell() {
+Widget emptyCell({double height = 90}) {
   return Container(
-    height: 90,
+    height: height,
     color: const Color(0xFFD7DCDC),
   );
 }
@@ -303,7 +329,6 @@ Widget subjectButton(
   String subject,
 ) {
   return Container(
-    height: 90,
     padding: const EdgeInsets.all(4),
     color: const Color(0xFFD7DCDC),
     child: ElevatedButton(
@@ -327,12 +352,15 @@ Widget subjectButton(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 1,
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       child: Text(
         subject,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          fontSize: 12,
+          fontSize: 9,
           fontFamily: 'sans-serif-cjk',
         ),
       ),

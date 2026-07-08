@@ -1,4 +1,5 @@
 import 'models/schedule.dart';
+import 'models/subject.dart';
 import 'models/task.dart';
 import 'repositories/schedule_repository.dart';
 import 'repositories/subject_repository.dart';
@@ -25,8 +26,10 @@ class SeedData {
 
     const seedSubjects = [
       '情報セキュリティ',
-      'Java応用プログラミング（1Q）',
-      '人工知能プログラミング（2Q）',
+      // 実際のScombZの表記（半角カッコ＋全角数字）に合わせる。表記が
+      // ズレるとスクレイピング結果と別科目として二重登録されてしまう。
+      'Java応用プログラミング(１Q)',
+      '人工知能プログラミング(２Q)',
       'ソフトウェア工学',
       'ソフトウェア開発演習',
       '人工知能',
@@ -35,11 +38,37 @@ class SeedData {
     ];
 
     for (final subjectName in seedSubjects) {
+      final isQ1Course = subjectName == 'Java応用プログラミング(１Q)';
+      final isQ2Course = subjectName == '人工知能プログラミング(２Q)';
+      final isQuarterCourse = isQ1Course || isQ2Course;
+
+      // 実際のScombZの表示例（前期）に合わせたQ1/Q2の開始日・終了日。
+      // Java応用プログラミング(1Q)と人工知能プログラミング(2Q)は
+      // 月曜3・4限の同じコマを前半7週/後半7週で入れ替わって使う。
+      String? termType;
+      DateTime? termStartDate;
+      DateTime? termEndDate;
+      if (isQ1Course) {
+        termType = SubjectTerm.q1;
+        termStartDate = DateTime(2026, 4, 11);
+        termEndDate = DateTime(2026, 6, 4);
+      } else if (isQ2Course) {
+        termType = SubjectTerm.q2;
+        termStartDate = DateTime(2026, 6, 6);
+        termEndDate = DateTime(2026, 7, 26);
+      }
+
       await _subjectRepository.findOrCreateSubject(
         subjectName: subjectName,
         attendanceCount: subjectName == '情報セキュリティ' ? 12 : 8,
         totalClassCount: 15,
-        isOnline: subjectName == 'Java応用プログラミング（1Q）',
+        isOnline: isQ1Course,
+        dayOfWeek: isQuarterCourse ? 1 : null,
+        period: isQuarterCourse ? 3 : null,
+        periodCount: isQuarterCourse ? 2 : 1,
+        termType: termType,
+        termStartDate: termStartDate,
+        termEndDate: termEndDate,
       );
     }
   }
@@ -57,13 +86,13 @@ class SeedData {
       totalClassCount: 15,
     );
     final javaSubjectId = await _subjectRepository.findOrCreateSubject(
-      subjectName: 'Java応用プログラミング（1Q）',
+      subjectName: 'Java応用プログラミング(１Q)',
       isOnline: true,
       attendanceCount: 10,
       totalClassCount: 15,
     );
     final aiSubjectId = await _subjectRepository.findOrCreateSubject(
-      subjectName: '人工知能プログラミング（2Q）',
+      subjectName: '人工知能プログラミング(２Q)',
       attendanceCount: 8,
       totalClassCount: 15,
     );

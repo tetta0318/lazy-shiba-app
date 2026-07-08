@@ -1,3 +1,17 @@
+/// 授業がどの期間に開講されるか（[SubjectTerm] の値のいずれか、または未設定）。
+class SubjectTerm {
+  const SubjectTerm._();
+
+  /// 通期・前期/後期を通して14週程度開講される科目。
+  static const full = 'full';
+
+  /// 前半7週のみ開講されるクォーター科目。
+  static const q1 = 'q1';
+
+  /// 後半7週のみ開講されるクォーター科目。
+  static const q2 = 'q2';
+}
+
 /// 曜日は [DateTime.weekday] と同じ表現（1: 月曜日 〜 7: 日曜日）。
 class Subject {
   final int? id;
@@ -7,6 +21,14 @@ class Subject {
   final int totalClassCount;
   final int? dayOfWeek;
   final int? period;
+
+  /// [period] から連続して何コマ分を占有するか（例: 3限・4限の2コマ連続授業なら2）。
+  final int periodCount;
+
+  /// [SubjectTerm.full] / [SubjectTerm.q1] / [SubjectTerm.q2] のいずれか。未設定の場合は null。
+  final String? termType;
+  final DateTime? termStartDate;
+  final DateTime? termEndDate;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -18,6 +40,10 @@ class Subject {
     required this.totalClassCount,
     this.dayOfWeek,
     this.period,
+    this.periodCount = 1,
+    this.termType,
+    this.termStartDate,
+    this.termEndDate,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -31,6 +57,10 @@ class Subject {
       totalClassCount: _parseInt(map['total_class_count']),
       dayOfWeek: _parseNullableInt(map['day_of_week']),
       period: _parseNullableInt(map['period']),
+      periodCount: _parseInt(map['period_count'], fallback: 1),
+      termType: map['term_type']?.toString(),
+      termStartDate: _parseNullableDateTime(map['term_start_date']),
+      termEndDate: _parseNullableDateTime(map['term_end_date']),
       createdAt: _parseDateTime(map['created_at']),
       updatedAt: _parseDateTime(map['updated_at']),
     );
@@ -45,6 +75,10 @@ class Subject {
       'total_class_count': totalClassCount,
       'day_of_week': dayOfWeek,
       'period': period,
+      'period_count': periodCount,
+      'term_type': termType,
+      'term_start_date': termStartDate?.toIso8601String(),
+      'term_end_date': termEndDate?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -58,6 +92,10 @@ class Subject {
     int? totalClassCount,
     int? dayOfWeek,
     int? period,
+    int? periodCount,
+    String? termType,
+    DateTime? termStartDate,
+    DateTime? termEndDate,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -69,6 +107,10 @@ class Subject {
       totalClassCount: totalClassCount ?? this.totalClassCount,
       dayOfWeek: dayOfWeek ?? this.dayOfWeek,
       period: period ?? this.period,
+      periodCount: periodCount ?? this.periodCount,
+      termType: termType ?? this.termType,
+      termStartDate: termStartDate ?? this.termStartDate,
+      termEndDate: termEndDate ?? this.termEndDate,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -94,4 +136,11 @@ int? _parseNullableInt(Object? value) {
 
 DateTime _parseDateTime(Object? value) {
   return DateTime.tryParse(value?.toString() ?? '') ?? DateTime(1970);
+}
+
+DateTime? _parseNullableDateTime(Object? value) {
+  if (value == null || value.toString().isEmpty) {
+    return null;
+  }
+  return DateTime.tryParse(value.toString());
 }

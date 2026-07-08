@@ -62,6 +62,10 @@ class AppDatabase {
         total_class_count INTEGER NOT NULL,
         day_of_week INTEGER,
         period INTEGER,
+        period_count INTEGER NOT NULL DEFAULT 1,
+        term_type TEXT,
+        term_start_date TEXT,
+        term_end_date TEXT,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -105,6 +109,10 @@ class AppDatabase {
         'total_class_count': 'INTEGER NOT NULL DEFAULT 0',
         'day_of_week': 'INTEGER',
         'period': 'INTEGER',
+        'period_count': 'INTEGER NOT NULL DEFAULT 1',
+        'term_type': 'TEXT',
+        'term_start_date': 'TEXT',
+        'term_end_date': 'TEXT',
         'created_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
         'updated_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
       },
