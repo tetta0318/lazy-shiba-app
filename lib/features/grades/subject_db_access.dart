@@ -1,11 +1,18 @@
+import '../../core/database/models/subject.dart';
 import '../../core/database/repositories/subject_repository.dart';
 
-/// 成績確認画面(SubjectDetailPage)向けの科目データベースアクセス処理。
+/// 成績画面(GradesPage)・成績確認画面(SubjectDetailPage)向けの
+/// 科目データベースアクセス処理。
 class SubjectDbAccess {
   SubjectDbAccess({SubjectRepository? subjectRepository})
       : _subjectRepository = subjectRepository ?? SubjectRepository();
 
   final SubjectRepository _subjectRepository;
+
+  /// 登録済みの全科目を取得する。
+  Future<List<Subject>> getSubjects() {
+    return _subjectRepository.getSubjects();
+  }
 
   /// 科目名から出席率（0〜100）を計算する。
   /// 該当科目がDBに存在しない、または総回数が0の場合は0を返す。

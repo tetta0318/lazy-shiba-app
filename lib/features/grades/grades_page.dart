@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/database/models/subject.dart';
-import '../../core/database/repositories/subject_repository.dart';
 import 'gpa_goal_page.dart';
+import 'subject_db_access.dart';
 import 'subject_detail_page.dart';
 import 'model/gpa_data.dart';
 
@@ -24,7 +24,7 @@ class GradesPage extends StatefulWidget {
 }
 
 class _GradesPageState extends State<GradesPage> {
-  final SubjectRepository _subjectRepository = SubjectRepository();
+  final SubjectDbAccess _subjectDbAccess = SubjectDbAccess();
   List<Subject> _subjects = [];
   bool _isLoading = true;
 
@@ -35,7 +35,7 @@ class _GradesPageState extends State<GradesPage> {
   }
 
   Future<void> _loadSubjects() async {
-    final subjects = await _subjectRepository.getSubjects();
+    final subjects = await _subjectDbAccess.getSubjects();
     if (!mounted) {
       return;
     }
