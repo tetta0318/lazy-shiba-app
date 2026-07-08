@@ -60,6 +60,8 @@ class AppDatabase {
         is_online INTEGER NOT NULL,
         attendance_count INTEGER NOT NULL,
         total_class_count INTEGER NOT NULL,
+        day_of_week INTEGER,
+        period INTEGER,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL
       )
@@ -101,6 +103,8 @@ class AppDatabase {
         'is_online': 'INTEGER NOT NULL DEFAULT 0',
         'attendance_count': 'INTEGER NOT NULL DEFAULT 0',
         'total_class_count': 'INTEGER NOT NULL DEFAULT 0',
+        'day_of_week': 'INTEGER',
+        'period': 'INTEGER',
         'created_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
         'updated_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
       },

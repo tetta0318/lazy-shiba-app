@@ -1,9 +1,12 @@
+/// 曜日は [DateTime.weekday] と同じ表現（1: 月曜日 〜 7: 日曜日）。
 class Subject {
   final int? id;
   final String subjectName;
   final bool isOnline;
   final int attendanceCount;
   final int totalClassCount;
+  final int? dayOfWeek;
+  final int? period;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -13,6 +16,8 @@ class Subject {
     required this.isOnline,
     required this.attendanceCount,
     required this.totalClassCount,
+    this.dayOfWeek,
+    this.period,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -24,6 +29,8 @@ class Subject {
       isOnline: _parseInt(map['is_online']) == 1,
       attendanceCount: _parseInt(map['attendance_count']),
       totalClassCount: _parseInt(map['total_class_count']),
+      dayOfWeek: _parseNullableInt(map['day_of_week']),
+      period: _parseNullableInt(map['period']),
       createdAt: _parseDateTime(map['created_at']),
       updatedAt: _parseDateTime(map['updated_at']),
     );
@@ -36,6 +43,8 @@ class Subject {
       'is_online': isOnline ? 1 : 0,
       'attendance_count': attendanceCount,
       'total_class_count': totalClassCount,
+      'day_of_week': dayOfWeek,
+      'period': period,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -47,6 +56,8 @@ class Subject {
     bool? isOnline,
     int? attendanceCount,
     int? totalClassCount,
+    int? dayOfWeek,
+    int? period,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -56,6 +67,8 @@ class Subject {
       isOnline: isOnline ?? this.isOnline,
       attendanceCount: attendanceCount ?? this.attendanceCount,
       totalClassCount: totalClassCount ?? this.totalClassCount,
+      dayOfWeek: dayOfWeek ?? this.dayOfWeek,
+      period: period ?? this.period,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
