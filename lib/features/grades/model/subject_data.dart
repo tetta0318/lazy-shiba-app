@@ -90,4 +90,24 @@ class SubjectStore {
       assignment2: 95,
     ),
   };
+
+  /// 既存のダミーデータがあればそれを返し、なければ
+  /// [attendanceRate]（実際の出席率など）を初期値として新規登録する。
+  /// これにより、上のリストにない科目（実DBから来た科目）でも
+  /// 成績確認画面に遷移できるようになる。
+  static SubjectData getOrCreate(
+    String subjectName, {
+    double attendanceRate = 0,
+  }) {
+    return subjects.putIfAbsent(
+      subjectName,
+      () => SubjectData(
+        subjectName: subjectName,
+        attendanceRate: attendanceRate,
+        totalScore: 0,
+        assignment1: 0,
+        assignment2: 0,
+      ),
+    );
+  }
 }

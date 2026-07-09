@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/database/models/subject.dart';
-import '../../core/database/repositories/subject_repository.dart';
 import 'gpa_goal_page.dart';
+import 'subject_db_access.dart';
 import 'subject_detail_page.dart';
 import 'model/gpa_data.dart';
-import 'model/subject_data.dart';
 
 // 曜日は Subject.dayOfWeek（DateTime.weekday と同じ表現）に合わせて月〜金のみ表示する。
 const _weekdays = [1, 2, 3, 4, 5];
@@ -25,7 +24,7 @@ class GradesPage extends StatefulWidget {
 }
 
 class _GradesPageState extends State<GradesPage> {
-  final SubjectRepository _subjectRepository = SubjectRepository();
+  final SubjectDbAccess _subjectDbAccess = SubjectDbAccess();
   List<Subject> _subjects = [];
   bool _isLoading = true;
 
@@ -36,7 +35,7 @@ class _GradesPageState extends State<GradesPage> {
   }
 
   Future<void> _loadSubjects() async {
-    final subjects = await _subjectRepository.getSubjects();
+    final subjects = await _subjectDbAccess.getSubjects();
     if (!mounted) {
       return;
     }
@@ -88,7 +87,7 @@ class _GradesPageState extends State<GradesPage> {
       child: Column(
         children: [
           for (final subject in subjects)
-            Expanded(child: subjectButton(context, subject.subjectName)),
+            Expanded(child: subjectButton(context, subject)),
         ],
       ),
     );
@@ -237,10 +236,6 @@ class _GradesPageState extends State<GradesPage> {
                   margin: const EdgeInsets.only(top: 8),
                   child: ElevatedButton(
                     onPressed: () {
-                      if (!SubjectStore.subjects
-                          .containsKey(subject.subjectName)) {
-                        return;
-                      }
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -326,21 +321,18 @@ Widget emptyCell({double height = 90}) {
 
 Widget subjectButton(
   BuildContext context,
-  String subject,
+  Subject subject,
 ) {
   return Container(
     padding: const EdgeInsets.all(4),
     color: const Color(0xFFD7DCDC),
     child: ElevatedButton(
       onPressed: () {
-        if (!SubjectStore.subjects.containsKey(subject)) {
-          return;
-        }
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => SubjectDetailPage(
-              subjectName: subject,
+              subjectName: subject.subjectName,
             ),
           ),
         );
@@ -357,7 +349,7 @@ Widget subjectButton(
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       child: Text(
-        subject,
+        subject.subjectName,
         textAlign: TextAlign.center,
         style: const TextStyle(
           fontSize: 9,
