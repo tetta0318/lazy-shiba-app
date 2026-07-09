@@ -1,14 +1,9 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/database/models/task.dart' as database_model;
-import '../../core/database/repositories/task_repository.dart';
-import '../../widgets/task_widget_service.dart';
 import '../auth/login.dart';
-import 'TasksScraping.dart';
 import 'completion_report_screen.dart';
+import 'task_main.dart';
 import 'task_model.dart';
-import 'task_report_calculator.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
@@ -18,12 +13,7 @@ class TasksScreen extends StatefulWidget {
 }
 
 class _TasksScreenState extends State<TasksScreen> {
-  static const _hideCompletedAfter = Duration(days: 7);
-
-  final TaskRepository _taskRepository = TaskRepository();
-  final TaskReportCalculator _taskReportCalculator = TaskReportCalculator();
-  final TasksScraping _tasksScraping = TasksScraping();
-  final TaskWidgetService _taskWidgetService = TaskWidgetService();
+  final TaskMain _taskMain = TaskMain();
   final List<TaskMock> _tasks = [];
   bool _isLoading = true;
   bool _isSyncing = false;
@@ -35,47 +25,27 @@ class _TasksScreenState extends State<TasksScreen> {
   }
 
   Future<void> _loadTasks() async {
-    final tasks = await _taskRepository.getTasks();
+    final items = await _taskMain.loadVisibleTasks();
     if (!mounted) {
       return;
     }
 
-    final now = DateTime.now();
-    final visibleTasks = tasks.where((task) {
-      if (task.status == 0) {
-        return true;
-      }
-      final completedAt = task.completedAt;
-      if (completedAt == null) {
-        return true;
-      }
-      return now.difference(completedAt) < _hideCompletedAfter;
-    });
-
     setState(() {
       _tasks
         ..clear()
-        ..addAll(visibleTasks.map(_toTaskMock));
+        ..addAll(items.map(_toTaskMock));
       _isLoading = false;
     });
 
-    _syncTaskWidget();
+    await _taskMain.refreshHomeWidget();
   }
 
-  Future<void> _syncTaskWidget() async {
-    try {
-      await _taskWidgetService.refresh();
-    } catch (_) {
-      // ウィジェット未配置や権限差異では失敗しても画面操作を止めない。
-    }
-  }
-
-  TaskMock _toTaskMock(database_model.Task task) {
+  TaskMock _toTaskMock(TaskListItem item) {
     return TaskMock(
-      id: task.id?.toString() ?? '',
-      name: task.taskName,
-      deadline: _formatDeadline(task.deadline),
-      complete: task.status != 0,
+      id: item.taskId.toString(),
+      name: item.taskName,
+      deadline: _formatDeadline(item.deadline),
+      complete: item.isCompleted,
     );
   }
 
@@ -85,7 +55,7 @@ class _TasksScreenState extends State<TasksScreen> {
     });
 
     try {
-      await _tasksScraping.syncWithScombz();
+      await _taskMain.syncWithScombz();
     } on SessionExpiredException {
       if (!mounted) return;
       await _showErrorDialog('セッションが切れました。再度ログインしてください。');
@@ -95,7 +65,7 @@ class _TasksScreenState extends State<TasksScreen> {
         (route) => false,
       );
       return;
-    } on DioException {
+    } on TaskSyncNetworkException {
       if (!mounted) return;
       await _showErrorDialog('通信に失敗しました。ネットワーク接続を確認してください。');
     } catch (_) {
@@ -134,7 +104,7 @@ class _TasksScreenState extends State<TasksScreen> {
     }
 
     if (task.complete) {
-      await _taskReportCalculator.revertCompletion(taskId: taskId);
+      await _taskMain.revertCompletion(taskId: taskId);
       _loadTasks();
       return;
     }

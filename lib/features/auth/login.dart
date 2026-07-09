@@ -3,7 +3,7 @@ import 'package:lazy_shiba_app/shared/main_layout_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../schedule/SubjectsScraping.dart';
-import '../tasks/TasksScraping.dart';
+import '../tasks/task_scraping.dart';
 import 'LoginWebviewPage.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final tasksScraper = TasksScraping();
+      final tasksScraper = TaskScraping();
       tasksScraper.taskDio.options.headers['Cookie'] = grabbedCookies;
       await tasksScraper.getTasks();
 

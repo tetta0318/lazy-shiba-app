@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart'; // 🌟パッケー
 
 import '../auth/LoginWebviewPage.dart';
 import '../schedule/SubjectsScraping.dart';
-import '../tasks/TasksScraping.dart';
+import '../tasks/task_scraping.dart';
 
 class PortalSyncScreen extends StatefulWidget {
   const PortalSyncScreen({super.key});
@@ -225,7 +225,7 @@ class _PortalSyncScreenState extends State<PortalSyncScreen> {
     });
 
     try {
-      final tasksScraper = TasksScraping();
+      final tasksScraper = TaskScraping();
       tasksScraper.taskDio.options.headers['Cookie'] = grabbedCookies;
       await tasksScraper.getTasks();
 

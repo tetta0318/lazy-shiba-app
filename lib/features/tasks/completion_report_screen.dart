@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'task_report_calculator.dart';
+import 'task_main.dart';
 
 class CompletionReportScreen extends StatefulWidget {
   final int taskId;
@@ -12,7 +12,7 @@ class CompletionReportScreen extends StatefulWidget {
 }
 
 class _CompletionReportScreenState extends State<CompletionReportScreen> {
-  final TaskReportCalculator _taskReportCalculator = TaskReportCalculator();
+  final TaskMain _taskMain = TaskMain();
   double _satisfactionLevel = 55.0; // 初期値55%
   bool _isSubmitting = false;
 
@@ -22,7 +22,7 @@ class _CompletionReportScreenState extends State<CompletionReportScreen> {
     });
 
     try {
-      await _taskReportCalculator.processCompletionReport(
+      await _taskMain.reportCompletion(
         taskId: widget.taskId,
         feeling: _satisfactionLevel.round(),
       );

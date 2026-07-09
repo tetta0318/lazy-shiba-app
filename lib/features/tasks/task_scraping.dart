@@ -39,8 +39,8 @@ class Assignment {
   });
 }
 
-class TasksScraping {
-  TasksScraping({
+class TaskScraping {
+  TaskScraping({
     SubjectRepository? subjectRepository,
     TaskRepository? taskRepository,
   })  : _subjectRepository = subjectRepository ?? SubjectRepository(),
