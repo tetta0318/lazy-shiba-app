@@ -1,9 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../../core/database/models/subject.dart';
+import '../../core/database/repositories/subject_repository.dart';
 import 'gpa_goal_page.dart';
 import 'subject_detail_page.dart';
 import 'model/gpa_data.dart';
+import 'model/subject_data.dart';
 
+// 曜日は Subject.dayOfWeek（DateTime.weekday と同じ表現）に合わせて月〜金のみ表示する。
+const _weekdays = [1, 2, 3, 4, 5];
+const _weekdayLabels = {1: '月', 2: '火', 3: '水', 4: '木', 5: '金'};
+const _periodTimeLabels = {
+  1: '09:00\n10:40',
+  2: '10:50\n12:30',
+  3: '13:20\n15:00',
+  4: '15:10\n16:50',
+};
 
 class GradesPage extends StatefulWidget {
   const GradesPage({super.key});
@@ -13,8 +25,117 @@ class GradesPage extends StatefulWidget {
 }
 
 class _GradesPageState extends State<GradesPage> {
+  final SubjectRepository _subjectRepository = SubjectRepository();
+  List<Subject> _subjects = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSubjects();
+  }
+
+  Future<void> _loadSubjects() async {
+    final subjects = await _subjectRepository.getSubjects();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _subjects = subjects;
+      _isLoading = false;
+    });
+  }
+
+  // periodCountが2以上の科目（2コマ連続授業）は、開始コマだけでなく
+  // 占有する全コマにマッチさせる。同じコマにQ1科目・Q2科目が両方
+  // 登録されていることがあるため、その場合は両方とも返す
+  // （呼び出し側で上下に分けて表示する）。
+  List<Subject> _subjectsAt({required int dayOfWeek, required int period}) {
+    return _subjects
+        .where((s) =>
+            s.dayOfWeek == dayOfWeek &&
+            s.period != null &&
+            period >= s.period! &&
+            period < s.period! + s.periodCount)
+        .toList();
+  }
+
+  List<Subject> get _unscheduledSubjects {
+    return _subjects
+        .where((s) => s.dayOfWeek == null || s.period == null)
+        .toList();
+  }
+
+  String _periodLabel(int period) {
+    final time = _periodTimeLabels[period];
+    return time != null ? '$period限\n$time' : '$period限';
+  }
+
+  // 1コマに複数科目（Q1科目・Q2科目など）がある場合は上下に分けて表示する。
+  // Table自体には高さを揃える仕組みを持たせず、行の高さを事前に計算して
+  // 全セルに明示的に渡すことで、列ごとに高さがズレる崩れを防ぐ。
+  Widget _timetableCell(
+    BuildContext context,
+    List<Subject> subjects,
+    double height,
+  ) {
+    if (subjects.isEmpty) {
+      return emptyCell(height: height);
+    }
+    return Container(
+      height: height,
+      color: const Color(0xFFD7DCDC),
+      child: Column(
+        children: [
+          for (final subject in subjects)
+            Expanded(child: subjectButton(context, subject.subjectName)),
+        ],
+      ),
+    );
+  }
+
+  TableRow _buildPeriodRow(BuildContext context, int period) {
+    final subjectsByDay = {
+      for (final day in _weekdays)
+        day: _subjectsAt(dayOfWeek: day, period: period),
+    };
+
+    var maxSubjectsInRow = 1;
+    for (final subjects in subjectsByDay.values) {
+      if (subjects.length > maxSubjectsInRow) {
+        maxSubjectsInRow = subjects.length;
+      }
+    }
+    final rowHeight = 90.0 * maxSubjectsInRow;
+
+    return TableRow(
+      children: [
+        periodCell(_periodLabel(period), height: rowHeight),
+        for (final day in _weekdays)
+          _timetableCell(context, subjectsByDay[day]!, rowHeight),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final periodsWithData =
+        _subjects.map((s) => s.period).whereType<int>().toSet();
+    final maxPeriod = periodsWithData.isEmpty
+        ? 4
+        : periodsWithData.reduce((a, b) => a > b ? a : b);
+    final periods = List<int>.generate(
+      maxPeriod < 4 ? 4 : maxPeriod,
+      (i) => i + 1,
+    );
+    final unscheduledSubjects = _unscheduledSubjects;
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.red.shade100,
@@ -71,81 +192,14 @@ class _GradesPageState extends State<GradesPage> {
                 0: FixedColumnWidth(80),
               },
               children: [
-                const TableRow(
-                  children: [
-                    HeaderCell('時限'),
-                    HeaderCell('月'),
-                    HeaderCell('火'),
-                    HeaderCell('水'),
-                    HeaderCell('木'),
-                    HeaderCell('金'),
-                  ],
-                ),
-
                 TableRow(
                   children: [
-                    periodCell('1限\n09:00\n10:40'),
-                    emptyCell(),
-                    emptyCell(),
-                    emptyCell(),
-                    emptyCell(),
-                    emptyCell(),
+                    const HeaderCell('時限'),
+                    for (final day in _weekdays)
+                      HeaderCell(_weekdayLabels[day]!),
                   ],
                 ),
-
-                TableRow(
-                  children: [
-                    periodCell('2限\n10:50\n12:30'),
-                    emptyCell(),
-                    subjectButton(context, 'ソフトウェア工学'),
-                    emptyCell(),
-                    subjectButton(context, '組込みシステム'),
-                    emptyCell(),
-                  ],
-                ),
-
-                TableRow(
-                  children: [
-                    periodCell('3限\n13:20\n15:00'),
-                    subjectButton(
-                      context,
-                      'Java応用プログラミング',
-                    ),
-                    subjectButton(
-                      context,
-                      'ソフトウェア開発演習',
-                    ),
-                    subjectButton(
-                      context,
-                      '人工知能',
-                    ),
-                    subjectButton(
-                      context,
-                      'コンピュータビジョン',
-                    ),
-                    emptyCell(),
-                  ],
-                ),
-
-                TableRow(
-                  children: [
-                    periodCell('4限\n15:10\n16:50'),
-                    subjectButton(
-                      context,
-                      '人工知能プログラミング',
-                    ),
-                    subjectButton(
-                      context,
-                      'ソフトウェア開発演習',
-                    ),
-                    emptyCell(),
-                    subjectButton(
-                      context,
-                      '集積回路工学',
-                    ),
-                    emptyCell(),
-                  ],
-                ),
+                for (final period in periods) _buildPeriodRow(context, period),
               ],
             ),
 
@@ -165,39 +219,56 @@ class _GradesPageState extends State<GradesPage> {
               ),
             ),
 
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(top: 8),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const SubjectDetailPage(
-                        subjectName: '卒業研究1',
+            if (unscheduledSubjects.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'その他の授業はありません。',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontFamily: 'sans-serif-cjk',
+                  ),
+                ),
+              )
+            else
+              for (final subject in unscheduledSubjects)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(top: 8),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (!SubjectStore.subjects
+                          .containsKey(subject.subjectName)) {
+                        return;
+                      }
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => SubjectDetailPage(
+                            subjectName: subject.subjectName,
+                          ),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.zero,
+                      ),
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        subject.subjectName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontFamily: 'sans-serif-cjk',
+                        ),
                       ),
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.zero,
-                  ),
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    '卒業研究1',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontFamily: 'sans-serif-cjk',
-                    ),
                   ),
                 ),
-              ),
-            ),
           ],
         ),
       ),
@@ -229,9 +300,9 @@ class HeaderCell extends StatelessWidget {
   }
 }
 
-Widget periodCell(String text) {
+Widget periodCell(String text, {double height = 90}) {
   return Container(
-    height: 90,
+    height: height,
     color: const Color(0xFFE6A39B),
     child: Center(
       child: Text(
@@ -246,9 +317,9 @@ Widget periodCell(String text) {
   );
 }
 
-Widget emptyCell() {
+Widget emptyCell({double height = 90}) {
   return Container(
-    height: 90,
+    height: height,
     color: const Color(0xFFD7DCDC),
   );
 }
@@ -258,11 +329,13 @@ Widget subjectButton(
   String subject,
 ) {
   return Container(
-    height: 90,
     padding: const EdgeInsets.all(4),
     color: const Color(0xFFD7DCDC),
     child: ElevatedButton(
       onPressed: () {
+        if (!SubjectStore.subjects.containsKey(subject)) {
+          return;
+        }
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -279,12 +352,15 @@ Widget subjectButton(
         backgroundColor: Colors.white,
         foregroundColor: Colors.black,
         elevation: 1,
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       child: Text(
         subject,
         textAlign: TextAlign.center,
         style: const TextStyle(
-          fontSize: 12,
+          fontSize: 9,
           fontFamily: 'sans-serif-cjk',
         ),
       ),

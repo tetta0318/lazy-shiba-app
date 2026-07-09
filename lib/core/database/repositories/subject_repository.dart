@@ -59,6 +59,12 @@ class SubjectRepository {
     bool isOnline = false,
     int attendanceCount = 0,
     int totalClassCount = 0,
+    int? dayOfWeek,
+    int? period,
+    int periodCount = 1,
+    String? termType,
+    DateTime? termStartDate,
+    DateTime? termEndDate,
   }) async {
     final existingSubject = await getSubjectByName(subjectName);
     if (existingSubject?.id != null) {
@@ -72,6 +78,12 @@ class SubjectRepository {
         isOnline: isOnline,
         attendanceCount: attendanceCount,
         totalClassCount: totalClassCount,
+        dayOfWeek: dayOfWeek,
+        period: period,
+        periodCount: periodCount,
+        termType: termType,
+        termStartDate: termStartDate,
+        termEndDate: termEndDate,
         createdAt: now,
         updatedAt: now,
       ),
@@ -119,6 +131,29 @@ class SubjectRepository {
       AppTable.subjects,
       id,
       {'is_online': isOnline ? 1 : 0},
+    );
+  }
+
+  Future<int> updateSchedule({
+    required int id,
+    int? dayOfWeek,
+    int? period,
+    int periodCount = 1,
+    String? termType,
+    DateTime? termStartDate,
+    DateTime? termEndDate,
+  }) async {
+    return _database.updateRow(
+      AppTable.subjects,
+      id,
+      {
+        'day_of_week': dayOfWeek,
+        'period': period,
+        'period_count': periodCount,
+        'term_type': termType,
+        'term_start_date': termStartDate?.toIso8601String(),
+        'term_end_date': termEndDate?.toIso8601String(),
+      },
     );
   }
 
