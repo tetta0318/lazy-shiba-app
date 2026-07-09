@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'grade_main.dart';
-import 'model/subject_data.dart';
-import 'subject_db_access.dart';
 import 'subject_goal_page.dart';
 
 class SubjectDetailPage extends StatefulWidget {
@@ -20,29 +18,28 @@ class SubjectDetailPage extends StatefulWidget {
 
 class _SubjectDetailPageState
     extends State<SubjectDetailPage> {
-  final SubjectDbAccess _subjectDbAccess = SubjectDbAccess();
   final GradeMain _gradeMain = GradeMain();
-  double _attendanceRate = 0;
-  bool _isLoadingAttendance = true;
+  SubjectGradeSummary? _summary;
+  bool _isLoadingSummary = true;
   List<TaskGradeItem> _taskGrades = [];
   bool _isLoadingTaskGrades = true;
 
   @override
   void initState() {
     super.initState();
-    _loadAttendanceRate();
+    _loadSummary();
     _loadTaskGrades();
   }
 
-  Future<void> _loadAttendanceRate() async {
-    final rate =
-        await _subjectDbAccess.getAttendanceRate(widget.subjectName);
+  Future<void> _loadSummary() async {
+    final summary =
+        await _gradeMain.loadSubjectGradeSummary(widget.subjectName);
     if (!mounted) {
       return;
     }
     setState(() {
-      _attendanceRate = rate;
-      _isLoadingAttendance = false;
+      _summary = summary;
+      _isLoadingSummary = false;
     });
   }
 
@@ -59,17 +56,15 @@ class _SubjectDetailPageState
 
   @override
   Widget build(BuildContext context) {
-
-    // 全体の成績はまだDBに保存先が無いため、
-    // 引き続きインメモリのダミーデータ(SubjectStore)を使う。
-    final subject = SubjectStore.getOrCreate(widget.subjectName);
+    final attendanceRate = _summary?.attendanceRate;
+    final overallScore = _summary?.overallScore;
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor:
             Colors.red.shade100,
         title: Text(
-          subject.subjectName,
+          widget.subjectName,
           style: const TextStyle(
             color: Colors.black,
             fontSize: 16,
@@ -100,11 +95,19 @@ class _SubjectDetailPageState
 
             const SizedBox(height: 10),
 
-            if (_isLoadingAttendance)
+            if (_isLoadingSummary)
               const LinearProgressIndicator(minHeight: 20)
+            else if (attendanceRate == null)
+              const Text(
+                'まだ出席データがありません。',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontFamily: 'sans-serif-cjk',
+                ),
+              )
             else ...[
               LinearProgressIndicator(
-                value: _attendanceRate / 100,
+                value: attendanceRate / 100,
                 minHeight: 20,
               ),
 
@@ -112,7 +115,7 @@ class _SubjectDetailPageState
 
               Text(
                 '出席率 '
-                '${_attendanceRate.toStringAsFixed(0)}%',
+                '${attendanceRate.toStringAsFixed(0)}%',
                 style: const TextStyle(
                   fontSize: 14,
                   fontFamily:
@@ -165,24 +168,34 @@ class _SubjectDetailPageState
 
             const SizedBox(height: 10),
 
-            LinearProgressIndicator(
-              value:
-                  subject.totalScore /
-                      100,
-              minHeight: 20,
-            ),
-
-            const SizedBox(height: 10),
-
-            Text(
-              '全体の成績 '
-              '${subject.totalScore.toStringAsFixed(0)}%',
-              style: const TextStyle(
-                fontSize: 14,
-                fontFamily:
-                    'sans-serif-cjk',
+            if (_isLoadingSummary)
+              const LinearProgressIndicator(minHeight: 20)
+            else if (overallScore == null)
+              const Text(
+                'まだ計算できません。',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontFamily: 'sans-serif-cjk',
+                ),
+              )
+            else ...[
+              LinearProgressIndicator(
+                value: overallScore / 100,
+                minHeight: 20,
               ),
-            ),
+
+              const SizedBox(height: 10),
+
+              Text(
+                '全体の成績 '
+                '${overallScore.toStringAsFixed(0)}%',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontFamily:
+                      'sans-serif-cjk',
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -238,5 +251,6 @@ class _SubjectDetailPageState
       ),
     );
     await _loadTaskGrades();
+    await _loadSummary();
   }
 }

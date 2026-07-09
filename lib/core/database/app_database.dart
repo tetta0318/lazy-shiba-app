@@ -7,6 +7,7 @@ class AppTable {
   static const tasks = 'tasks';
   static const subjects = 'subjects';
   static const schedules = 'schedules';
+  static const attendances = 'attendances';
 }
 
 class AppDatabase {
@@ -21,6 +22,7 @@ class AppDatabase {
     AppTable.tasks,
     AppTable.subjects,
     AppTable.schedules,
+    AppTable.attendances,
   };
 
   Database? _database;
@@ -99,6 +101,25 @@ class AppDatabase {
       )
     ''');
 
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS ${AppTable.attendances} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        subject_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        status INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(subject_id)
+          REFERENCES ${AppTable.subjects}(id)
+      )
+    ''');
+
+    // 同一科目・同一日付は1コマとして1行のみ持つ（出席確認の重複記録を防ぐ）。
+    await db.execute('''
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_attendances_subject_date
+        ON ${AppTable.attendances}(subject_id, date)
+    ''');
+
     await _ensureColumns(
       db,
       AppTable.subjects,
@@ -140,6 +161,18 @@ class AppDatabase {
         'date': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
         'title': "TEXT NOT NULL DEFAULT ''",
         'genre': "TEXT NOT NULL DEFAULT ''",
+        'created_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+        'updated_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+      },
+    );
+    await _ensureColumns(
+      db,
+      AppTable.attendances,
+      const {
+        'subject_id': 'INTEGER NOT NULL DEFAULT 0',
+        'date': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
+        // 既定は「未確認」（3）。分母にも分子にも影響しない安全側の値。
+        'status': 'INTEGER NOT NULL DEFAULT 3',
         'created_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
         'updated_at': "TEXT NOT NULL DEFAULT '1970-01-01T00:00:00.000'",
       },

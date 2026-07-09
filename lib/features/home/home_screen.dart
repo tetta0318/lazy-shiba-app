@@ -5,6 +5,7 @@ import '../../core/database/models/task.dart' as database_model;
 import '../../core/database/repositories/schedule_repository.dart';
 import '../../core/database/repositories/task_repository.dart';
 import '../../widgets/widget_main.dart';
+import '../grades/attendance_check_dialog.dart';
 import '../sync/portal_sync_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -30,6 +31,12 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _loadSummaries();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      AttendanceCheckDialog.showIfNeeded(context);
+    });
   }
 
   Future<void> _loadSummaries() async {

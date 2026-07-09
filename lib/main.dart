@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/database/seed_data.dart';
 import 'features/auth/login.dart';
+import 'features/grades/grade_main.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SeedData.insertIfEmpty();
+  await _syncAttendanceOnStartup();
   runApp(
     const ProviderScope(
       child: MyApp(),
@@ -31,5 +33,16 @@ class MyApp extends StatelessWidget {
       ),
       home: const LoginScreen(),
     );
+  }
+}
+
+/// 起動時の出席データ同期（休講・8日以上前の未確認分をF4へ自動記録する）。
+/// BuildContextが無い時点の処理のためダイアログは出さない。
+/// 失敗してもアプリ起動を止めない（HomeScreen表示時に自己回復する）。
+Future<void> _syncAttendanceOnStartup() async {
+  try {
+    await GradeMain().syncAttendanceOnStartup();
+  } catch (error) {
+    debugPrint('出席データの起動時同期に失敗しました: $error');
   }
 }
