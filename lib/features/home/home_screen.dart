@@ -4,6 +4,7 @@ import '../../core/database/models/schedule.dart';
 import '../../core/database/models/task.dart' as database_model;
 import '../../core/database/repositories/schedule_repository.dart';
 import '../../core/database/repositories/task_repository.dart';
+import '../../widgets/widget_main.dart';
 import '../sync/portal_sync_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TaskRepository _taskRepository = TaskRepository();
   final ScheduleRepository _scheduleRepository = ScheduleRepository();
+  final WidgetMain _widgetMain = WidgetMain();
 
   List<database_model.Task> _tasks = [];
   List<Schedule> _schedules = [];
@@ -41,6 +43,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _tasks = tasks;
       _schedules = schedules;
     });
+
+    await _widgetMain.refreshAllWidgets();
   }
 
   @override
