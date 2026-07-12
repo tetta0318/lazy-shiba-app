@@ -1,9 +1,10 @@
 import '../../core/database/models/task.dart';
 import 'attendance_calculator.dart';
+import 'grade_predictor.dart';
 import 'subject_db_access.dart';
 
-export 'attendance_calculator.dart'
-    show PendingAttendanceCheck, SubjectGradeSummary;
+export 'attendance_calculator.dart' show PendingAttendanceCheck;
+export 'grade_predictor.dart' show SubjectGradeSummary;
 export '../../core/database/models/attendance.dart' show AttendanceStatus;
 
 /// 課題成績予想画面に表示する課題1件分の情報。
@@ -38,12 +39,19 @@ class GradeMain {
   GradeMain({
     SubjectDbAccess? subjectDbAccess,
     AttendanceCalculator? attendanceCalculator,
+    GradePredictor? gradePredictor,
   })  : _subjectDbAccess = subjectDbAccess ?? SubjectDbAccess(),
-        _attendanceCalculator =
-            attendanceCalculator ?? AttendanceCalculator();
+        _attendanceCalculator = attendanceCalculator ??
+            AttendanceCalculator(subjectDbAccess: subjectDbAccess),
+        _gradePredictor = gradePredictor ??
+            GradePredictor(
+              subjectDbAccess: subjectDbAccess,
+              attendanceCalculator: attendanceCalculator,
+            );
 
   final SubjectDbAccess _subjectDbAccess;
   final AttendanceCalculator _attendanceCalculator;
+  final GradePredictor _gradePredictor;
 
   /// 指定科目に紐づく課題を、完了・未完了を問わず締切順に取得する。
   Future<List<TaskGradeItem>> loadTaskGrades(String subjectName) async {
@@ -97,6 +105,20 @@ class GradeMain {
   /// 成績確認画面(SubjectDetailPage)向けの成績サマリを取得する。
   /// 出席率・全体の成績（課題手ごたえとの平均）の両方をこれ1本で賄う。
   Future<SubjectGradeSummary> loadSubjectGradeSummary(String subjectName) {
-    return _attendanceCalculator.calculateSubjectGrade(subjectName);
+    return _gradePredictor.calculateSubjectGrade(subjectName);
+  }
+
+  /// 成績画面(GradesPage)・ホーム画面(HomeScreen)の「現在のGPA」向けの
+  /// 予想GPAを取得する。全科目の成績予想をGP値に変換して平均したもの。
+  /// 算出可能な科目が1つも無い場合はnull。
+  Future<double?> loadExpectedGpa() {
+    return _gradePredictor.calculateExpectedGpa();
+  }
+
+  /// ホーム画面(HomeScreen)向けの「全体の成績」を取得する。
+  /// 全科目の成績予想(overallScore)をGP変換せず単純平均したもの(0〜100)。
+  /// 算出可能な科目が1つも無い場合はnull。
+  Future<double?> loadAverageOverallScore() {
+    return _gradePredictor.calculateAverageOverallScore();
   }
 }

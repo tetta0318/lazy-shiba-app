@@ -15,23 +15,7 @@ class PendingAttendanceCheck {
   });
 }
 
-/// 科目1つ分の成績サマリ（DBには保存しない。表示のたびに計算する）。
-///
-/// 各値は、算出に使える材料が1つも無い場合はnullとする
-/// （0点・0%と「まだ計算できない」を区別するため）。
-class SubjectGradeSummary {
-  final double? attendanceRate;
-  final double? taskAverage;
-  final double? overallScore;
-
-  const SubjectGradeSummary({
-    required this.attendanceRate,
-    required this.taskAverage,
-    required this.overallScore,
-  });
-}
-
-/// 出席情報の起動時同期・出席率計算・成績予想計算を担当する
+/// 出席情報の起動時同期・出席率計算を担当する
 /// （M4-3 出席情報取得・計算処理に相当）。
 /// DBアクセスはすべてSubjectDbAccessに委譲し、このクラスは
 /// 列挙・差集合・振り分け・計算のロジックのみを持つ。
@@ -163,35 +147,6 @@ class AttendanceCalculator {
         .where((a) => a.status == AttendanceStatus.present)
         .length;
     return present / total * 100;
-  }
-
-  /// 成績予想を計算する。全課題（完了済みのみ）の手ごたえの単純平均と、
-  /// 出席率の単純平均を成績予想とする。
-  /// 片方の材料しか無い場合はその値を採用し、両方無い場合はnullとする。
-  Future<SubjectGradeSummary> calculateSubjectGrade(
-    String subjectName,
-  ) async {
-    final attendanceRate = await calculateAttendanceRate(subjectName);
-
-    final tasks = await _subjectDbAccess.getTasksBySubjectName(subjectName);
-    final completedTasks = tasks.where((t) => t.status == 1).toList();
-    final taskAverage = completedTasks.isEmpty
-        ? null
-        : completedTasks.fold<int>(0, (sum, t) => sum + t.feeling) /
-            completedTasks.length;
-
-    double? overallScore;
-    if (attendanceRate != null && taskAverage != null) {
-      overallScore = (attendanceRate + taskAverage) / 2;
-    } else {
-      overallScore = attendanceRate ?? taskAverage;
-    }
-
-    return SubjectGradeSummary(
-      attendanceRate: attendanceRate,
-      taskAverage: taskAverage,
-      overallScore: overallScore,
-    );
   }
 
   /// 科目の開講曜日・学期期間から「本来あるべきコマの日付一覧」を列挙する。

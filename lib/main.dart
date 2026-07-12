@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/database/seed_data.dart';
-import 'features/auth/login.dart';
+import 'features/auth/login_screen.dart';
 import 'features/grades/grade_main.dart';
 
 Future<void> main() async {
