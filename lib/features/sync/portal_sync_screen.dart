@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // 🌟パッケージをインポート
 
-import '../auth/LoginWebviewPage.dart';
+import '../auth/login_webview_page.dart';
 import '../schedule/SubjectsScraping.dart';
 import '../tasks/task_scraping.dart';
 
