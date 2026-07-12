@@ -6,14 +6,19 @@ import '../../core/database/repositories/schedule_repository.dart';
 import '../../core/database/repositories/task_repository.dart';
 import '../../widgets/widget_main.dart';
 import '../grades/attendance_check_dialog.dart';
+import '../grades/grade_main.dart';
 import '../sync/portal_sync_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, this.onNavigateToTab});
+  const HomeScreen({super.key, this.onNavigateToTab, this.isActive = true});
 
   /// ボトムナビゲーションのタブを切り替えるためのコールバック。
   /// 課題タブ = 1, 成績タブ = 2, 予定タブ = 3
   final void Function(int index)? onNavigateToTab;
+
+  /// このタブが現在ボトムナビゲーションで選択中かどうか。
+  /// falseからtrueに変わった瞬間（タブが表示された瞬間）に成績サマリを再計算する。
+  final bool isActive;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -23,20 +28,38 @@ class _HomeScreenState extends State<HomeScreen> {
   final TaskRepository _taskRepository = TaskRepository();
   final ScheduleRepository _scheduleRepository = ScheduleRepository();
   final WidgetMain _widgetMain = WidgetMain();
+  final GradeMain _gradeMain = GradeMain();
 
   List<database_model.Task> _tasks = [];
   List<Schedule> _schedules = [];
+  double? _currentGpa;
+  double? _averageOverallScore;
 
   @override
   void initState() {
     super.initState();
     _loadSummaries();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _loadGradeSummary();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) {
         return;
       }
-      AttendanceCheckDialog.showIfNeeded(context);
+      await AttendanceCheckDialog.showIfNeeded(context);
+      if (!mounted) {
+        return;
+      }
+      await _loadGradeSummary();
     });
+  }
+
+  @override
+  void didUpdateWidget(HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 他タブで成績が変わっている可能性があるため、このタブが
+    // 表示された瞬間（非選択→選択）に成績サマリを再計算する。
+    if (!oldWidget.isActive && widget.isActive) {
+      _loadGradeSummary();
+    }
   }
 
   Future<void> _loadSummaries() async {
@@ -52,6 +75,21 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     await _widgetMain.refreshAllWidgets();
+  }
+
+  Future<void> _loadGradeSummary() async {
+    final results = await Future.wait([
+      _gradeMain.loadExpectedGpa(),
+      _gradeMain.loadAverageOverallScore(),
+    ]);
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _currentGpa = results[0];
+      _averageOverallScore = results[1];
+    });
   }
 
   @override
@@ -86,20 +124,20 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.all(16),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: const [
+                          children: [
                             Column(
                               children: [
-                                Text(
+                                const Text(
                                   '現在のGPA',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.grey,
                                   ),
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(
-                                  '3.25',
-                                  style: TextStyle(
+                                  _formatGpa(_currentGpa),
+                                  style: const TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -108,17 +146,17 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             Column(
                               children: [
-                                Text(
+                                const Text(
                                   '全体の成績',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Colors.grey,
                                   ),
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(
-                                  '35%',
-                                  style: TextStyle(
+                                  _formatOverallScore(_averageOverallScore),
+                                  style: const TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.blue,
@@ -207,7 +245,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       MaterialPageRoute(
                         builder: (context) => const PortalSyncScreen(),
                       ),
-                    ).then((_) => _loadSummaries());
+                    ).then((_) {
+                      _loadSummaries();
+                      _loadGradeSummary();
+                    });
                   },
                 ),
               ),
@@ -216,6 +257,14 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  String _formatGpa(double? gpa) {
+    return gpa != null ? gpa.toStringAsFixed(1) : '-';
+  }
+
+  String _formatOverallScore(double? score) {
+    return score != null ? '${score.toStringAsFixed(0)}%' : '-';
   }
 
   Widget _buildSectionTitle(String title) {

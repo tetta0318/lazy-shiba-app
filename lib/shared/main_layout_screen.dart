@@ -22,11 +22,17 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 表示する画面のリスト
+    // 表示する画面のリスト。
+    // IndexedStackは非表示のタブも生存させ続けるため、タブを切り替えても
+    // 各画面のinitStateは再実行されない。そこで現在選択中かどうか(isActive)を
+    // 渡し、成績集計を持つ画面は「表示された瞬間」に自身で再計算させる。
     final List<Widget> screens = [
-      HomeScreen(onNavigateToTab: _onItemTapped), // 0
-      const TasksScreen(),    // 1
-      const GradesPage(),     // 2
+      HomeScreen(
+        onNavigateToTab: _onItemTapped,
+        isActive: _selectedIndex == 0,
+      ), // 0
+      const TasksScreen(), // 1
+      GradesPage(isActive: _selectedIndex == 2), // 2
       const ScheduleScreen(), // 3
     ];
 

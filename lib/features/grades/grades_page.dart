@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/database/models/subject.dart';
+import 'grade_main.dart';
 import 'gpa_goal_page.dart';
 import 'subject_db_access.dart';
 import 'subject_detail_page.dart';
@@ -17,7 +18,11 @@ const _periodTimeLabels = {
 };
 
 class GradesPage extends StatefulWidget {
-  const GradesPage({super.key});
+  const GradesPage({super.key, this.isActive = true});
+
+  /// このタブが現在ボトムナビゲーションで選択中かどうか。
+  /// falseからtrueに変わった瞬間（タブが表示された瞬間）に予想GPAを再計算する。
+  final bool isActive;
 
   @override
   State<GradesPage> createState() => _GradesPageState();
@@ -25,6 +30,7 @@ class GradesPage extends StatefulWidget {
 
 class _GradesPageState extends State<GradesPage> {
   final SubjectDbAccess _subjectDbAccess = SubjectDbAccess();
+  final GradeMain _gradeMain = GradeMain();
   List<Subject> _subjects = [];
   bool _isLoading = true;
 
@@ -32,6 +38,17 @@ class _GradesPageState extends State<GradesPage> {
   void initState() {
     super.initState();
     _loadSubjects();
+    _loadExpectedGpa();
+  }
+
+  @override
+  void didUpdateWidget(GradesPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 他タブで成績が変わっている可能性があるため、このタブが
+    // 表示された瞬間（非選択→選択）に予想GPAを再計算する。
+    if (!oldWidget.isActive && widget.isActive) {
+      _loadExpectedGpa();
+    }
   }
 
   Future<void> _loadSubjects() async {
@@ -43,6 +60,28 @@ class _GradesPageState extends State<GradesPage> {
       _subjects = subjects;
       _isLoading = false;
     });
+  }
+
+  Future<void> _loadExpectedGpa() async {
+    final gpa = await _gradeMain.loadExpectedGpa();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      GpaData.expectedGpa = gpa != null ? gpa.toStringAsFixed(1) : '-';
+    });
+  }
+
+  // 科目詳細画面へ遷移する。戻ってきた時点で成績（課題の手ごたえ・出席率）が
+  // 更新されている可能性があるため、予想GPAを再計算し直して表示に反映する。
+  Future<void> _openSubjectDetail(String subjectName) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SubjectDetailPage(subjectName: subjectName),
+      ),
+    );
+    await _loadExpectedGpa();
   }
 
   // periodCountが2以上の科目（2コマ連続授業）は、開始コマだけでなく
@@ -87,7 +126,12 @@ class _GradesPageState extends State<GradesPage> {
       child: Column(
         children: [
           for (final subject in subjects)
-            Expanded(child: subjectButton(context, subject)),
+            Expanded(
+              child: subjectButton(
+                subject,
+                () => _openSubjectDetail(subject.subjectName),
+              ),
+            ),
         ],
       ),
     );
@@ -235,16 +279,8 @@ class _GradesPageState extends State<GradesPage> {
                   width: double.infinity,
                   margin: const EdgeInsets.only(top: 8),
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => SubjectDetailPage(
-                            subjectName: subject.subjectName,
-                          ),
-                        ),
-                      );
-                    },
+                    onPressed: () =>
+                        _openSubjectDetail(subject.subjectName),
                     style: ElevatedButton.styleFrom(
                       shape: const RoundedRectangleBorder(
                         borderRadius: BorderRadius.zero,
@@ -320,23 +356,14 @@ Widget emptyCell({double height = 90}) {
 }
 
 Widget subjectButton(
-  BuildContext context,
   Subject subject,
+  VoidCallback onPressed,
 ) {
   return Container(
     padding: const EdgeInsets.all(4),
     color: const Color(0xFFD7DCDC),
     child: ElevatedButton(
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SubjectDetailPage(
-              subjectName: subject.subjectName,
-            ),
-          ),
-        );
-      },
+      onPressed: onPressed,
       style: ElevatedButton.styleFrom(
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.zero,
