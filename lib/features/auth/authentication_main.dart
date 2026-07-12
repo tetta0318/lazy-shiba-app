@@ -1,7 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../schedule/SubjectsScraping.dart';
-import '../tasks/task_scraping.dart';
+import 'subject_scraping.dart';
+import 'task_scraping.dart';
 
 /// 認証に関する想定内のエラー（入力不足・認証失敗など）を表す。
 /// [message]はそのままUIに表示できる日本語メッセージ。
