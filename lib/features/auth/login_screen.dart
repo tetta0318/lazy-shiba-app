@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lazy_shiba_app/shared/main_layout_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import '../schedule/SubjectsScraping.dart';
-import '../tasks/task_scraping.dart';
 import 'LoginWebviewPage.dart';
+import 'authentication_main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,22 +14,29 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _idController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final AuthenticationMain _authMain = AuthenticationMain();
 
   bool _isLoading = false;
   bool _isObscure = true;
   String _errorMessage = '';
 
   Future<void> _handleLogin() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('scombz_id', _idController.text);
-    await prefs.setString('scombz_password', _passwordController.text);
+    final id = _idController.text;
+    final password = _passwordController.text;
 
+    // 資格情報の保存はmain層(AuthenticationMain)へ委譲する。
+    await _authMain.saveCredentials(id: id, password: password);
+    if (!mounted) {
+      return;
+    }
+
+    // Cookie取得はWebView画面(UI)に任せ、戻り値としてCookieを受け取る。
     final grabbedCookies = await Navigator.push<String>(
       context,
       MaterialPageRoute(
         builder: (context) => LoginWebviewPage(
-          id: _idController.text,
-          password: _passwordController.text,
+          id: id,
+          password: password,
         ),
       ),
     );
@@ -49,13 +54,8 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final tasksScraper = TaskScraping();
-      tasksScraper.taskDio.options.headers['Cookie'] = grabbedCookies;
-      await tasksScraper.getTasks();
-
-      final subjectsScraper = SubjectsScraping();
-      subjectsScraper.timetableDio.options.headers['Cookie'] = grabbedCookies;
-      await subjectsScraper.getSubjectNames();
+      // 課題・時間割の初回同期もmain層へ委譲する。
+      await _authMain.syncInitialData(grabbedCookies);
 
       if (!mounted) {
         return;
