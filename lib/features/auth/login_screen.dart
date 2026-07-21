@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lazy_shiba_app/shared/main_layout_screen.dart';
 
-import 'LoginWebviewPage.dart';
 import 'authentication_main.dart';
+import 'login_webview_page.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -24,8 +24,16 @@ class _LoginScreenState extends State<LoginScreen> {
     final id = _idController.text;
     final password = _passwordController.text;
 
-    // 資格情報の保存はmain層(AuthenticationMain)へ委譲する。
-    await _authMain.saveCredentials(id: id, password: password);
+    // 入力チェックと資格情報の保存はmain層(AuthenticationMain)へ委譲する。
+    // 未入力などの想定内エラーはAuthenticationExceptionのメッセージを表示する。
+    try {
+      await _authMain.saveCredentials(id: id, password: password);
+    } on AuthenticationException catch (e) {
+      setState(() {
+        _errorMessage = e.message;
+      });
+      return;
+    }
     if (!mounted) {
       return;
     }
@@ -40,11 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
-
-    if (grabbedCookies == null || grabbedCookies.isEmpty) {
-      setState(() {
-        _errorMessage = '連携がキャンセルされました。';
-      });
+    if (!mounted) {
       return;
     }
 
@@ -54,8 +58,8 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // 課題・時間割の初回同期もmain層へ委譲する。
-      await _authMain.syncInitialData(grabbedCookies);
+      // Cookieの検証（認証成否の判定）と初回同期もmain層へ委譲する。
+      await _authMain.completeLogin(grabbedCookies);
 
       if (!mounted) {
         return;
@@ -65,6 +69,13 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
         MaterialPageRoute(builder: (context) => const MainLayoutScreen()),
       );
+    } on AuthenticationException catch (e) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _errorMessage = e.message;
+      });
     } catch (error) {
       if (!mounted) {
         return;

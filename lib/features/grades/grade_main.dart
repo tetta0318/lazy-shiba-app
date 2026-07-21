@@ -61,6 +61,12 @@ class GradeMain {
     return items;
   }
 
+  /// 目標GPAの入力を検証し、正規化した数値文字列を返す（0.0〜4.0のみ）。
+  /// 数値でない・範囲外の場合はArgumentError。ロジックはGradePredictorに委譲する。
+  String validateTargetGpa(String input) {
+    return GradePredictor.validateTargetGpa(input);
+  }
+
   /// 完了済み課題の成績予想（手ごたえ）を更新する。
   Future<void> updateTaskFeeling({
     required int taskId,

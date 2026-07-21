@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../auth/login_screen.dart';
 import 'completion_report_screen.dart';
 import 'task_main.dart';
-import 'task_model.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
@@ -14,7 +13,7 @@ class TasksScreen extends StatefulWidget {
 
 class _TasksScreenState extends State<TasksScreen> {
   final TaskMain _taskMain = TaskMain();
-  final List<TaskMock> _tasks = [];
+  final List<TaskListItem> _tasks = [];
   bool _isLoading = true;
   bool _isSyncing = false;
 
@@ -33,20 +32,11 @@ class _TasksScreenState extends State<TasksScreen> {
     setState(() {
       _tasks
         ..clear()
-        ..addAll(items.map(_toTaskMock));
+        ..addAll(items);
       _isLoading = false;
     });
 
     await _taskMain.refreshHomeWidget();
-  }
-
-  TaskMock _toTaskMock(TaskListItem item) {
-    return TaskMock(
-      id: item.taskId.toString(),
-      name: item.taskName,
-      deadline: _formatDeadline(item.deadline),
-      complete: item.isCompleted,
-    );
   }
 
   Future<void> _onRefreshPressed() async {
@@ -97,13 +87,10 @@ class _TasksScreenState extends State<TasksScreen> {
     );
   }
 
-  Future<void> _onCheckTapped(TaskMock task) async {
-    final taskId = int.tryParse(task.id);
-    if (taskId == null) {
-      return;
-    }
+  Future<void> _onCheckTapped(TaskListItem task) async {
+    final taskId = task.taskId;
 
-    if (task.complete) {
+    if (task.isCompleted) {
       await _taskMain.revertCompletion(taskId: taskId);
       _loadTasks();
       return;
@@ -141,8 +128,8 @@ class _TasksScreenState extends State<TasksScreen> {
   @override
   Widget build(BuildContext context) {
     _tasks.sort((a, b) {
-      if (a.complete == b.complete) return 0;
-      return a.complete ? 1 : -1;
+      if (a.isCompleted == b.isCompleted) return 0;
+      return a.isCompleted ? 1 : -1;
     });
 
     return Scaffold(
@@ -174,7 +161,7 @@ class _TasksScreenState extends State<TasksScreen> {
                   itemBuilder: (context, index) {
                     final task = _tasks[index];
                     return Card(
-                      color: task.complete
+                      color: task.isCompleted
                           ? Colors.grey.shade200
                           : Colors.white,
                       margin: const EdgeInsets.symmetric(
@@ -184,7 +171,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       child: ListTile(
                         leading: GestureDetector(
                           onTap: () => _onCheckTapped(task),
-                          child: task.complete
+                          child: task.isCompleted
                               ? const Icon(
                                   Icons.check_circle,
                                   color: Colors.green,
@@ -192,20 +179,21 @@ class _TasksScreenState extends State<TasksScreen> {
                               : const Icon(Icons.circle_outlined),
                         ),
                         title: Text(
-                          '${index + 1}. ${task.name}',
+                          '${index + 1}. ${task.taskName}',
                           style: TextStyle(
                             fontSize: 10,
                             fontWeight: FontWeight.w500,
-                            decoration: task.complete
+                            decoration: task.isCompleted
                                 ? TextDecoration.lineThrough
                                 : null,
-                            color: task.complete ? Colors.grey : Colors.black,
+                            color:
+                                task.isCompleted ? Colors.grey : Colors.black,
                           ),
                         ),
-                        trailing: task.complete
+                        trailing: task.isCompleted
                             ? null
                             : Text(
-                                task.deadline,
+                                _formatDeadline(task.deadline),
                                 style: const TextStyle(fontSize: 14),
                               ),
                       ),

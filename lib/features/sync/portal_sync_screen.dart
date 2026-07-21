@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart'; // 🌟パッケージをインポート
 
-import '../auth/LoginWebviewPage.dart';
-import '../schedule/SubjectsScraping.dart';
-import '../tasks/task_scraping.dart';
+import '../auth/login_webview_page.dart';
+import '../auth/subject_scraping.dart';
+import '../auth/task_scraping.dart';
 
 class PortalSyncScreen extends StatefulWidget {
   const PortalSyncScreen({super.key});

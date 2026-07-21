@@ -4,9 +4,9 @@ import '../../core/database/models/task.dart';
 import '../../widgets/task_widget_service.dart';
 import 'task_database_accessor.dart';
 import 'task_report_calculator.dart';
-import 'task_scraping.dart';
+import '../auth/task_scraping.dart';
 
-export 'task_scraping.dart' show SessionExpiredException;
+export '../auth/task_scraping.dart' show SessionExpiredException;
 
 /// ScombZとの通信に失敗した場合にスローされる（TasksScreen向けにDioExceptionを隠蔽する）
 class TaskSyncNetworkException implements Exception {
