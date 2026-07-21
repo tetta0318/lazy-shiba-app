@@ -103,6 +103,17 @@ class GradePredictor {
     return overallScores;
   }
 
+  /// 目標GPAとして入力された文字列を検証し、正規化した数値文字列を返す。
+  /// 受け付けるのは0.0〜4.0の数値のみ。数値に変換できない、または範囲外の
+  /// 場合はArgumentError（messageに表示用メッセージを持つ）。
+  static String validateTargetGpa(String input) {
+    final value = double.tryParse(input.trim());
+    if (value == null || value < 0.0 || value > 4.0) {
+      throw ArgumentError('0.0〜4.0の範囲で入力してください。');
+    }
+    return value.toString();
+  }
+
   /// 点数(0〜100)をGP値(0〜4)に変換する。
   /// 0-49:0, 50-59:1, 60-69:2, 70-79:3, 80-100:4。
   /// 事前の四捨五入は行わない（区間の下端を含む閾値比較のみ）。

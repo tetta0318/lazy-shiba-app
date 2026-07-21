@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'grade_main.dart';
 import 'model/gpa_data.dart';
 
 class GpaGoalPage extends StatefulWidget {
@@ -11,6 +13,30 @@ class GpaGoalPage extends StatefulWidget {
 class _GpaGoalPageState extends State<GpaGoalPage> {
   final TextEditingController _goalController =
       TextEditingController();
+  final GradeMain _gradeMain = GradeMain();
+  String? _goalError;
+
+  @override
+  void dispose() {
+    _goalController.dispose();
+    super.dispose();
+  }
+
+  /// 入力の検証はmain層(GradeMain→GradePredictor)へ委譲し、
+  /// このUIは結果の反映とエラー表示だけを行う。
+  void _onSubmitGoal() {
+    try {
+      final targetGpa = _gradeMain.validateTargetGpa(_goalController.text);
+      setState(() {
+        _goalError = null;
+        GpaData.targetGpa = targetGpa;
+      });
+    } on ArgumentError catch (e) {
+      setState(() {
+        _goalError = e.message.toString();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -143,12 +169,14 @@ class _GpaGoalPageState extends State<GpaGoalPage> {
                 Expanded(
                   child: TextField(
                     controller: _goalController,
-                    decoration:
-                        const InputDecoration(
-                      hintText:
-                          '目標GPAを入力',
-                      border:
-                          OutlineInputBorder(),
+                    keyboardType:
+                        const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '目標GPAを入力',
+                      border: const OutlineInputBorder(),
+                      errorText: _goalError,
                     ),
                   ),
                 ),
@@ -156,16 +184,7 @@ class _GpaGoalPageState extends State<GpaGoalPage> {
                 const SizedBox(width: 10),
 
                 ElevatedButton(
-                  onPressed: () {
-                    if (_goalController
-                        .text
-                        .isNotEmpty) {
-                      setState(() {
-                        GpaData.targetGpa =
-                            _goalController.text;
-                      });
-                    }
-                  },
+                  onPressed: _onSubmitGoal,
                   child: const Text(
                     '修正',
                   ),
